@@ -1,0 +1,11 @@
+[Unit]
+Description=Voyage nightly backup (database + receipts)
+After=network-online.target postgresql.service
+
+[Service]
+Type=oneshot
+User=voyage
+Group=voyage
+ExecStart=/opt/voyage/deploy/backup.sh
+Nice=10
+IOSchedulingClass=idle

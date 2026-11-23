@@ -76,13 +76,9 @@ The app is load-tested with 100,011 users and about 1.5 million records. Everyda
 
 ## Deploying on Linux
 
-- Run `npm ci` and `npx prisma migrate deploy` on the host; never ship `node_modules`.
-- Run the API as a pm2 cluster (`npm run start:cluster`, see `server/ecosystem.config.cjs`) on a high port, with nginx in front (`deploy/nginx.conf`).
-- Build the client on the host (`npm run build`) so `VITE_*` values are correct, serve `client/dist`
-  from nginx, and proxy `/api` to the Node server (same origin keeps the session cookie simple).
-- Set `NODE_ENV=production` (secure cookies), `CLIENT_URL` to the public origin, and make
-  `UPLOAD_DIR` an absolute path writable by the service user.
-- Configure `SMTP_*` to enable email notifications; without it notifications are in-app only.
+Follow [deploy/DEPLOYMENT.md](deploy/DEPLOYMENT.md), a step-by-step runbook for Ubuntu with nginx, a pm2 cluster, PostgreSQL, nightly backups (`deploy/backup.sh` and a systemd timer), a restore script, a health check and a go-live checklist. Use `npm run db:seed:prod` (not the demo seed) to bootstrap a real installation. The API refuses to start in production with unsafe settings: an http URL, a placeholder secret or a relative upload path.
+
+Every push runs CI ([.github/workflows/ci.yml](.github/workflows/ci.yml)) on Linux. It applies the migrations and checks they match the schema, seeds, runs the unit and integration tests, builds the web app and audits dependencies.
 
 ## Microsoft SSO (@utthunga.com)
 

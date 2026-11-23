@@ -1,0 +1,84 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  server:
+    name: API - migrations, unit and integration tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: voyage
+          POSTGRES_PASSWORD: voyage-ci
+          POSTGRES_DB: voyage_ci
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U voyage -d voyage_ci"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      NODE_ENV: test
+      DATABASE_URL: postgresql://voyage:voyage-ci@localhost:5432/voyage_ci?schema=public
+      JWT_SECRET: ci-only-secret-0f3b8c1d9e2a7b6c5d4e3f2a1b0c9d8e
+      CLIENT_URL: http://localhost:5195
+      UPLOAD_DIR: /tmp/voyage-uploads
+      ESCALATION_CRON: '0 0 1 1 *'
+    defaults:
+      run:
+        working-directory: server
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: server/package-lock.json
+      - run: npm ci
+      - run: npx prisma generate
+      - name: Apply migrations
+        run: npx prisma migrate deploy
+      - name: Check the schema matches the migrations
+        run: npx prisma migrate diff --from-schema-datasource src/db/schema.prisma --to-schema-datamodel src/db/schema.prisma --exit-code
+      - name: Seed demo data
+        run: npm run db:seed
+      - name: Unit tests
+        run: npm test
+      - name: Integration tests
+        run: npm run test:e2e
+      - name: Production configuration is rejected when unsafe
+        run: |
+          set +e
+          NODE_ENV=production CLIENT_URL=http://insecure UPLOAD_DIR=relative timeout 20 node src/server.js > boot.log 2>&1
+          code=$?
+          cat boot.log
+          grep -q "Refusing to start" boot.log && [ "$code" -ne 0 ]
+      - name: Dependency audit (production packages)
+        run: npm audit --omit=dev --audit-level=high
+
+  client:
+    name: Web - build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: client
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: client/package-lock.json
+      - run: npm ci
+      - run: npm run build
+      - name: Dependency audit (production packages)
+        run: npm audit --omit=dev --audit-level=high
