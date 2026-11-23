@@ -28,6 +28,11 @@ const schema = z.object({
     .string()
     .optional()
     .transform((v) => v !== 'false'),
+  // Update manager / title / department from Microsoft Graph at every SSO sign-in
+  SSO_SYNC_DIRECTORY: z
+    .string()
+    .optional()
+    .transform((v) => v !== 'false'),
   SMTP_HOST: z.string().optional(),
   SMTP_PORT: z.coerce.number().optional(),
   SMTP_USER: z.string().optional(),

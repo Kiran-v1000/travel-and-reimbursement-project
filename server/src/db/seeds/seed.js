@@ -26,6 +26,21 @@ const DAY = 86400000;
 const daysFromNow = (n) => new Date(Date.now() + n * DAY);
 const dateOnly = (d) => new Date(d.toISOString().slice(0, 10));
 
+/**
+ * Functional hierarchy: very large requests go all the way up the reporting line to the CEO.
+ * Priorities sit above the trip-type rules; the exception variants keep the CEO step for
+ * out-of-policy requests too (exception rules are always chosen first).
+ */
+export const CEO_THRESHOLD = 500000;
+export function ceoRules(L) {
+  return [
+    { name: 'CEO approval: travel ₹5,00,000+ (exception)', entityType: 'TRAVEL', priority: 4, minAmount: CEO_THRESHOLD, onPolicyException: true, levels: [L.manager, L.head, L.finance, L.ceo] },
+    { name: 'CEO approval: travel ₹5,00,000+', entityType: 'TRAVEL', priority: 8, minAmount: CEO_THRESHOLD, levels: [L.manager, L.head, L.finance, L.ceo] },
+    { name: 'CEO approval: expenses ₹5,00,000+ (exception)', entityType: 'EXPENSE', priority: 4, minAmount: CEO_THRESHOLD, onPolicyException: true, levels: [L.manager, L.head, L.ceo] },
+    { name: 'CEO approval: expenses ₹5,00,000+', entityType: 'EXPENSE', priority: 8, minAmount: CEO_THRESHOLD, levels: [L.manager, L.head, L.ceo] },
+  ];
+}
+
 async function main() {
   if ((await prisma.user.count()) > 0) {
     console.log('Database already has users - skipping seed. Run "npm run db:reset" for a clean demo database.');
@@ -110,8 +125,10 @@ async function main() {
     skip: { label: 'Skip-level manager', approvers: [{ type: 'SKIP_MANAGER' }] },
     head: { label: 'Department head', approvers: [{ type: 'DEPT_HEAD' }] },
     finance: { label: 'Finance controller', approvers: [{ type: 'ROLE', role: 'FINANCE' }] },
+    ceo: { label: 'CEO', approvers: [{ type: 'TOP_OF_LINE' }] },
   };
   const rules = [
+    ...ceoRules(L),
     { name: 'Travel policy exception', entityType: 'TRAVEL', priority: 5, onPolicyException: true, levels: [L.manager, L.head, L.finance] },
     { name: 'International travel', entityType: 'TRAVEL', priority: 10, travelType: 'INTERNATIONAL', levels: [L.manager, L.head, L.finance] },
     { name: 'High-value domestic travel', entityType: 'TRAVEL', priority: 20, travelType: 'DOMESTIC', minAmount: 75000, levels: [L.manager, L.skip] },

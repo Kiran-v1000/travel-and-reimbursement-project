@@ -12,6 +12,7 @@ import { prisma } from '../../db/pool.js';
 import { env } from '../../config/env.js';
 import { AppError } from '../../shared/errors/AppError.js';
 import { audit } from '../audit/audit.service.js';
+import { syncFromDirectory } from './auth.directory.service.js';
 
 const SCOPES = ['openid', 'profile', 'email', 'User.Read'];
 const cryptoProvider = new CryptoProvider();
@@ -105,5 +106,6 @@ export async function completeLogin(query, transactionToken) {
     await audit(user, 'user.sso_linked', 'USER', user.id, { email: user.email });
   }
   if (!user.active) throw new AppError(403, 'Your account is inactive. Contact an administrator.', 'SSO_INACTIVE');
+  user = await syncFromDirectory(user, result.accessToken);
   return { user, returnTo: tx.returnTo };
 }

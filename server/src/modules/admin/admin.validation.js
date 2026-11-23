@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 const approverSpec = z.object({
-  type: z.enum(['MANAGER', 'SKIP_MANAGER', 'DEPT_HEAD', 'ROLE', 'USER']),
+  type: z.enum(['MANAGER', 'SKIP_MANAGER', 'DEPT_HEAD', 'TOP_OF_LINE', 'ROLE', 'USER']),
   role: z.enum(['EMPLOYEE', 'MANAGER', 'FINANCE', 'ADMIN', 'AUDITOR']).optional(),
   userId: z.string().optional(),
 });

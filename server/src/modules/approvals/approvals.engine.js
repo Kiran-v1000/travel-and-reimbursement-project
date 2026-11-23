@@ -70,6 +70,17 @@ export async function resolveApprover(spec, requester, settings) {
     case 'USER':
       candidate = await activeUser(spec.userId);
       break;
+    case 'TOP_OF_LINE': {
+      // Walk the reporting line to its top (the CEO in a functional hierarchy).
+      let cursor = requester.managerId ? await prisma.user.findUnique({ where: { id: requester.managerId }, select: { id: true, managerId: true } }) : null;
+      const seen = new Set();
+      while (cursor?.managerId && !seen.has(cursor.managerId) && seen.size < 15) {
+        seen.add(cursor.id);
+        cursor = await prisma.user.findUnique({ where: { id: cursor.managerId }, select: { id: true, managerId: true } });
+      }
+      candidate = await activeUser(cursor?.id);
+      break;
+    }
     default:
       candidate = null;
   }

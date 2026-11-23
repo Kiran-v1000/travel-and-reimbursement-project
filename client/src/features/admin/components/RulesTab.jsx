@@ -15,6 +15,7 @@ const TYPES = [
   { v: 'MANAGER', label: 'Reporting manager' },
   { v: 'SKIP_MANAGER', label: "Manager's manager" },
   { v: 'DEPT_HEAD', label: 'Department head' },
+  { v: 'TOP_OF_LINE', label: 'Top of reporting line (CEO)' },
   { v: 'ROLE', label: 'Anyone with role' },
   { v: 'USER', label: 'Specific person' },
 ];
