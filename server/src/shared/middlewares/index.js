@@ -22,7 +22,7 @@ async function loadSessionUser(id) {
   if (hit && hit.exp > Date.now()) return hit.user;
   const user = await prisma.user.findUnique({
     where: { id },
-    select: { id: true, name: true, email: true, role: true, active: true, managerId: true, departmentId: true },
+    select: { id: true, name: true, email: true, role: true, active: true, managerId: true, departmentId: true, mustChangePassword: true, passwordChangedAt: true },
   });
   if (userCache.size >= USER_CACHE_MAX) userCache.delete(userCache.keys().next().value);
   userCache.set(id, { user, exp: Date.now() + USER_CACHE_TTL_MS });
@@ -42,6 +42,14 @@ export const authenticate = asyncHandler(async (req, _res, next) => {
   }
   const user = await loadSessionUser(payload.sub);
   if (!user || !user.active) throw unauthorized('Account is inactive');
+  // Sessions issued before the latest password change are no longer valid.
+  if (user.passwordChangedAt && payload.iat * 1000 < user.passwordChangedAt.getTime() - 1000) {
+    throw unauthorized('Your password was changed. Please sign in again.');
+  }
+  // A temporary password unlocks only the account endpoints until it is replaced.
+  if (user.mustChangePassword && !req.originalUrl.startsWith('/api/auth/')) {
+    throw new AppError(403, 'Please choose a new password before continuing.', 'PASSWORD_CHANGE_REQUIRED');
+  }
   req.user = user;
   next();
 });

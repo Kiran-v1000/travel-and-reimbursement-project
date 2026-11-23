@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { Children, cloneElement, isValidElement, useEffect, useId, useRef, useState } from 'react';
 import { motion, useReducedMotion, animate } from 'framer-motion';
 import clsx from 'clsx';
 import { Loader2 } from 'lucide-react';
@@ -18,22 +18,50 @@ export function PageHeader({ kicker, title, description, actions, children }) {
   );
 }
 
+const FORM_CONTROLS = new Set(['input', 'select', 'textarea']);
+
+/**
+ * Give the first native form control inside `node` (up to a few wrapper levels deep)
+ * an id and ARIA wiring, so the visible label names it for screen readers.
+ */
+function wireControl(node, attrs, state = { done: false }) {
+  if (state.done || !isValidElement(node)) return node;
+  if (typeof node.type === 'string' && FORM_CONTROLS.has(node.type) && node.props.type !== 'hidden') {
+    state.done = true;
+    state.id = node.props.id ?? attrs.id;
+    return cloneElement(node, {
+      id: state.id,
+      'aria-describedby': [node.props['aria-describedby'], attrs.describedBy].filter(Boolean).join(' ') || undefined,
+      'aria-invalid': attrs.invalid || node.props['aria-invalid'] || undefined,
+      'aria-required': attrs.required || node.props['aria-required'] || undefined,
+    });
+  }
+  if (typeof node.type !== 'string' || node.props.children == null) return node; // components manage their own labelling
+  const children = Children.map(node.props.children, (c) => wireControl(c, attrs, state));
+  return cloneElement(node, {}, children);
+}
+
 export function Field({ label, error, hint, children, className, required }) {
+  const id = useId();
+  const msgId = `${id}-msg`;
+  const message = error ? (Array.isArray(error) ? error[0] : error) : hint;
+  const state = { done: false };
+  const wired = Children.map(children, (c) => wireControl(c, { id, describedBy: message ? msgId : undefined, invalid: !!error, required }, state));
   return (
     <div className={className}>
       {label && (
-        <label className="label">
+        <label className="label" htmlFor={state.done ? state.id : undefined}>
           {label}
-          {required && <span className="ml-0.5 text-bad">*</span>}
+          {required && <span className="ml-0.5 text-bad" aria-hidden>*</span>}
         </label>
       )}
-      {children}
+      {wired}
       {error ? (
-        <p role="alert" className="mt-1 text-[12px] text-bad">
-          {Array.isArray(error) ? error[0] : error}
+        <p id={msgId} role="alert" className="mt-1 text-[12px] text-bad">
+          {message}
         </p>
       ) : (
-        hint && <p className="mt-1 text-[12px] text-muted">{hint}</p>
+        hint && <p id={msgId} className="mt-1 text-[12px] text-muted">{hint}</p>
       )}
     </div>
   );

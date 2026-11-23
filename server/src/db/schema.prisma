@@ -100,6 +100,9 @@ model User {
   name             String
   email            String          @unique
   passwordHash     String?
+  /// Set for seeded / admin-reset passwords: the user must choose a new one after signing in.
+  mustChangePassword Boolean       @default(false)
+  passwordChangedAt  DateTime?
   /// Microsoft Entra ID object id, set on first SSO sign-in.
   azureOid         String?         @unique
   role             Role            @default(EMPLOYEE)

@@ -17,6 +17,7 @@ export const profileSelect = {
   location: true,
   active: true,
   lastLoginAt: true,
+  mustChangePassword: true,
   azureOid: true,
   department: { select: { id: true, name: true, code: true } },
   costCenter: { select: { id: true, name: true, code: true } },
@@ -73,7 +74,10 @@ async function assertNoCycle(userId, managerId) {
 
 export async function createUser(actor, data) {
   const { password, managerId, ...rest } = data;
-  const created = await prisma.user.create({ data: { ...rest, passwordHash: await bcrypt.hash(password || 'Welcome@123', 10) } });
+  // No password = Microsoft sign-in only. An admin-chosen password is temporary and must be changed at first sign-in.
+  const created = await prisma.user.create({
+    data: { ...rest, ...(password ? { passwordHash: await bcrypt.hash(password, 12), mustChangePassword: true } : {}) },
+  });
   if (managerId) await setManager(created.id, managerId);
   const user = await prisma.user.findUnique({ where: { id: created.id }, select: profileSelect });
   await audit(actor, 'user.created', 'USER', user.id, { email: user.email, role: user.role });
@@ -90,7 +94,10 @@ export async function updateUser(actor, id, data) {
   if (actor.id === id && data.role && data.role !== existing.role) throw forbidden('You cannot change your own role');
   const { password, managerId, ...rest } = data;
   const patch = { ...rest };
-  if (password) patch.passwordHash = await bcrypt.hash(password, 10);
+  if (password) {
+    // Admin reset: temporary password, and every existing session of that user ends.
+    Object.assign(patch, { passwordHash: await bcrypt.hash(password, 12), mustChangePassword: true, passwordChangedAt: new Date() });
+  }
   await prisma.$transaction(async (tx) => {
     if (Object.keys(patch).length) await tx.user.update({ where: { id }, data: patch });
     // Re-path the user's whole subtree when their manager changes.

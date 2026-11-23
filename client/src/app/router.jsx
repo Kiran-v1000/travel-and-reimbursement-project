@@ -1,7 +1,7 @@
 import { lazy, Suspense, useEffect } from 'react';
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { useAppStore, hasRole } from './store.js';
-import { useSessionBootstrap, LoginPage } from '../features/auth/index.js';
+import { useSessionBootstrap, LoginPage, ChangePasswordPage } from '../features/auth/index.js';
 import { MainLayout } from '../layouts/MainLayout.jsx';
 import { AuthLayout } from '../layouts/AuthLayout.jsx';
 import { SkeletonRows } from '../shared/components/ui/primitives.jsx';
@@ -25,6 +25,8 @@ function Guard({ roles, children }) {
   const location = useLocation();
   if (booting) return <FullScreenLoader />;
   if (!user) return <Navigate to="/login" replace state={{ from: location.pathname }} />;
+  // A temporary password must be replaced before anything else is usable.
+  if (user.mustChangePassword) return <Navigate to="/change-password" replace />;
   if (roles && !hasRole(user, ...roles)) return <Navigate to="/" replace />;
   return children;
 }
@@ -55,6 +57,7 @@ function Inner() {
     <Routes>
       <Route element={<AuthLayout />}>
         <Route path="/login" element={user ? <Navigate to="/" replace /> : <LoginPage />} />
+        <Route path="/change-password" element={<ChangePasswordPage />} />
       </Route>
       <Route
         element={

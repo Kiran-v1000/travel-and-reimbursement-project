@@ -56,9 +56,38 @@ if (!parsed.success) {
 }
 
 export const env = parsed.data;
+export const isProd = env.NODE_ENV === 'production';
+// In production request logging is opt-in (nginx access logs already cover it).
+if (isProd && process.env.REQUEST_LOGGING === undefined) env.REQUEST_LOGGING = false;
 
+const PLACEHOLDER = /change-me|replace-with|your-|example|changeme|secret123/i;
+
+/**
+ * Extra rules that only apply in production. Returns a list of problems (empty = OK).
+ * Exported so it can be unit tested.
+ */
+export function productionProblems(e) {
+  const problems = [];
+  if (e.JWT_SECRET.length < 32 || PLACEHOLDER.test(e.JWT_SECRET)) {
+    problems.push('JWT_SECRET must be a random value of at least 32 characters (node -e "console.log(require(\'crypto\').randomBytes(48).toString(\'hex\'))").');
+  }
+  if (PLACEHOLDER.test(e.DATABASE_URL)) problems.push('DATABASE_URL still contains a placeholder password.');
+  for (const origin of e.CLIENT_URL.split(',').map((s) => s.trim())) {
+    if (!origin.startsWith('https://')) problems.push(`CLIENT_URL "${origin}" must use https:// in production (session cookies are Secure).`);
+  }
+  if (!e.UPLOAD_DIR.startsWith('/')) problems.push(`UPLOAD_DIR "${e.UPLOAD_DIR}" must be an absolute path in production (e.g. /var/lib/voyage/uploads, shared storage when running several servers).`);
+  if (e.SSO_ENABLED && !e.AZURE_AD_REDIRECT_URI.startsWith('https://')) problems.push('AZURE_AD_REDIRECT_URI must use https:// in production.');
+  if (e.SMTP_HOST && PLACEHOLDER.test(e.SMTP_PASS ?? '')) problems.push('SMTP_PASS still contains a placeholder.');
+  return problems;
+}
+
+const problems = [];
 if (env.SSO_ENABLED && !(env.AZURE_AD_TENANT_ID && env.AZURE_AD_CLIENT_ID && env.AZURE_AD_CLIENT_SECRET)) {
-  console.error('SSO_ENABLED=true needs AZURE_AD_TENANT_ID, AZURE_AD_CLIENT_ID and AZURE_AD_CLIENT_SECRET.');
+  problems.push('SSO_ENABLED=true needs AZURE_AD_TENANT_ID, AZURE_AD_CLIENT_ID and AZURE_AD_CLIENT_SECRET.');
+}
+if (isProd) problems.push(...productionProblems(env));
+if (problems.length) {
+  console.error('Refusing to start - fix the configuration:');
+  problems.forEach((p) => console.error(`  - ${p}`));
   process.exit(1);
 }
-export const isProd = env.NODE_ENV === 'production';

@@ -19,6 +19,7 @@ import * as finance from '../../modules/finance/finance.service.js';
 import { createDelegation } from '../../modules/users/users.service.js';
 import { audit } from '../../modules/audit/audit.service.js';
 import { rebuildOrgTree } from '../../shared/utils/orgTree.js';
+import { CURRENCIES, CATEGORIES, DEFAULT_SETTINGS, LEVELS, defaultRules } from './reference-data.js';
 
 const PASSWORD = 'Voyage@123';
 const ADMIN_EMAIL = process.env.SEED_ADMIN_EMAIL || 'admin@utthunga.com';
@@ -27,51 +28,20 @@ const DAY = 86400000;
 const daysFromNow = (n) => new Date(Date.now() + n * DAY);
 const dateOnly = (d) => new Date(d.toISOString().slice(0, 10));
 
-/**
- * Functional hierarchy: very large requests go all the way up the reporting line to the CEO.
- * Priorities sit above the trip-type rules; the exception variants keep the CEO step for
- * out-of-policy requests too (exception rules are always chosen first).
- */
-export const CEO_THRESHOLD = 500000;
-export function ceoRules(L) {
-  return [
-    { name: 'CEO approval: travel ₹5,00,000+ (exception)', entityType: 'TRAVEL', priority: 4, minAmount: CEO_THRESHOLD, onPolicyException: true, levels: [L.manager, L.head, L.finance, L.ceo] },
-    { name: 'CEO approval: travel ₹5,00,000+', entityType: 'TRAVEL', priority: 8, minAmount: CEO_THRESHOLD, levels: [L.manager, L.head, L.finance, L.ceo] },
-    { name: 'CEO approval: expenses ₹5,00,000+ (exception)', entityType: 'EXPENSE', priority: 4, minAmount: CEO_THRESHOLD, onPolicyException: true, levels: [L.manager, L.head, L.ceo] },
-    { name: 'CEO approval: expenses ₹5,00,000+', entityType: 'EXPENSE', priority: 8, minAmount: CEO_THRESHOLD, levels: [L.manager, L.head, L.ceo] },
-  ];
-}
-
 async function main() {
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('The demo seed creates sample people and passwords. Use "npm run db:seed:prod" in production.');
+  }
   if ((await prisma.user.count()) > 0) {
     console.log('Database already has users - skipping seed. Run "npm run db:reset" for a clean demo database.');
     return;
   }
   console.log('Seeding reference data...');
 
-  const currencies = [
-    ['INR', 'Indian Rupee', '₹', 1],
-    ['USD', 'US Dollar', '$', 83.2],
-    ['EUR', 'Euro', '€', 90.1],
-    ['GBP', 'British Pound', '£', 105.4],
-    ['SGD', 'Singapore Dollar', 'S$', 61.8],
-    ['AED', 'UAE Dirham', 'AED', 22.65],
-    ['JPY', 'Japanese Yen', '¥', 0.56],
-  ];
-  for (const [code, name, symbol, rateToBase] of currencies) await prisma.currency.create({ data: { code, name, symbol, rateToBase } });
+  for (const [code, name, symbol, rateToBase] of CURRENCIES) await prisma.currency.create({ data: { code, name, symbol, rateToBase } });
 
   const cats = {};
-  for (const c of [
-    ['AIRFARE', 'Airfare', 'plane', null, 0],
-    ['RAIL', 'Train & bus', 'train', 10000, 300],
-    ['LODGING', 'Hotel & lodging', 'bed', 25000, 0],
-    ['MEALS', 'Meals', 'utensils', 3000, 500],
-    ['TAXI', 'Taxi & local transport', 'car', 5000, 300],
-    ['VISA', 'Visa & travel fees', 'stamp', null, 0],
-    ['CLIENT', 'Client entertainment', 'wine', 10000, 500],
-    ['INTERNET', 'Phone & internet', 'wifi', 2000, 500],
-    ['MISC', 'Other business expense', 'receipt', 5000, 500],
-  ]) {
+  for (const c of CATEGORIES) {
     cats[c[0]] = await prisma.expenseCategory.create({ data: { code: c[0], name: c[1], icon: c[2], perItemLimit: c[3], receiptThreshold: c[4] } });
   }
 
@@ -112,33 +82,11 @@ async function main() {
   await prisma.department.update({ where: { id: dept.OPS.id }, data: { headId: divya.id } });
   await rebuildOrgTree();
 
-  const settings = {
-    baseCurrency: 'INR', leadDaysDomestic: 7, leadDaysInternational: 21, maxTripDays: 30,
-    lodgingCapDomestic: 8000, lodgingCapInternational: 22000, mealsPerDiem: 2500,
-    submissionDeadlineDays: 60, estimateTolerancePct: 10, approvalTimeoutHours: 48, escalationEnabled: true,
-    resubmitRule: 'RESTART', fallbackApproverId: divya.id, emailNotifications: true, retentionYears: 8,
-    roleApprovers: { FINANCE: meera.id },
-  };
+  const settings = { ...DEFAULT_SETTINGS, fallbackApproverId: divya.id, roleApprovers: { FINANCE: meera.id } };
   for (const [key, value] of Object.entries(settings)) await prisma.setting.create({ data: { key, value } });
 
   console.log('Seeding approval rules...');
-  const L = {
-    manager: { label: 'Reporting manager', approvers: [{ type: 'MANAGER' }] },
-    skip: { label: 'Skip-level manager', approvers: [{ type: 'SKIP_MANAGER' }] },
-    head: { label: 'Department head', approvers: [{ type: 'DEPT_HEAD' }] },
-    finance: { label: 'Finance controller', approvers: [{ type: 'ROLE', role: 'FINANCE' }] },
-    ceo: { label: 'CEO', approvers: [{ type: 'TOP_OF_LINE' }] },
-  };
-  const rules = [
-    ...ceoRules(L),
-    { name: 'Travel policy exception', entityType: 'TRAVEL', priority: 5, onPolicyException: true, levels: [L.manager, L.head, L.finance] },
-    { name: 'International travel', entityType: 'TRAVEL', priority: 10, travelType: 'INTERNATIONAL', levels: [L.manager, L.head, L.finance] },
-    { name: 'High-value domestic travel', entityType: 'TRAVEL', priority: 20, travelType: 'DOMESTIC', minAmount: 75000, levels: [L.manager, L.skip] },
-    { name: 'Standard travel', entityType: 'TRAVEL', priority: 100, levels: [L.manager] },
-    { name: 'Expense policy exception', entityType: 'EXPENSE', priority: 5, onPolicyException: true, levels: [L.manager, L.head] },
-    { name: 'High-value expense report', entityType: 'EXPENSE', priority: 20, minAmount: 50000, levels: [L.manager, L.head] },
-    { name: 'Standard expense report', entityType: 'EXPENSE', priority: 100, levels: [L.manager] },
-  ];
+  const rules = defaultRules(LEVELS);
   for (const r of rules) await prisma.approvalRule.create({ data: r });
   await audit(divya, 'system.seeded', 'SYSTEM', null, { rules: rules.length, users: 11 });
 

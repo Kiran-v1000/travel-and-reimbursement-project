@@ -55,3 +55,9 @@ export const logout = (_req, res) => {
 };
 
 export const me = async (req, res) => res.json(await svc.me(req.user.id));
+
+export const changePassword = async (req, res) => {
+  const token = await svc.changePassword(req.user.id, req.body.currentPassword, req.body.newPassword);
+  res.cookie(AUTH_COOKIE, token, cookieOpts);
+  res.json(await svc.me(req.user.id));
+};

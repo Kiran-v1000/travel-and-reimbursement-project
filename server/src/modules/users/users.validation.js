@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { passwordProblem } from '../../db/seeds/reference-data.js';
 
 const roles = z.enum(['EMPLOYEE', 'MANAGER', 'FINANCE', 'ADMIN', 'AUDITOR']);
 
@@ -13,7 +14,14 @@ const userBase = {
   costCenterId: z.string().optional().nullable(),
   managerId: z.string().optional().nullable(),
   active: z.boolean().optional(),
-  password: z.string().min(8).max(100).optional(),
+  password: z
+    .string()
+    .max(200)
+    .superRefine((pw, ctx) => {
+      const problem = passwordProblem(pw);
+      if (problem) ctx.addIssue({ code: 'custom', message: `Password needs ${problem}` });
+    })
+    .optional(),
 };
 
 export const createSchema = z.object(userBase);

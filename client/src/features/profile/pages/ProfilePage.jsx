@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { AnimatePresence, motion } from 'framer-motion';
-import { UserCheck, Plus, CalendarRange, XCircle, Mail, MapPin, Building2, BadgeCheck, Briefcase } from 'lucide-react';
+import { UserCheck, Plus, CalendarRange, XCircle, Mail, MapPin, Building2, BadgeCheck, Briefcase, KeyRound } from 'lucide-react';
+import { ChangePasswordForm } from '../../auth/index.js';
 import { toast } from 'sonner';
 import { useAppStore, hasRole } from '../../../app/store.js';
 import { get, post, del } from '../../../shared/lib/api.js';
@@ -17,6 +18,7 @@ export function ProfilePage() {
   const qc = useQueryClient();
   const { data: delegations = [] } = useQuery({ queryKey: ['delegations'], queryFn: () => get('/users/delegations') });
   const [open, setOpen] = useState(false);
+  const [pwOpen, setPwOpen] = useState(false);
   const [form, setForm] = useState({ delegateId: '', scope: 'ALL', startDate: isoDay(new Date()), endDate: isoDay(new Date(Date.now() + 7 * 86400000)), reason: '' });
   const canDelegate = hasRole(user, 'MANAGER', 'FINANCE', 'ADMIN');
   const create = useMutation({
@@ -57,6 +59,20 @@ export function ProfilePage() {
           ))}
         </dl>
       </div>
+
+      {user.hasPassword && (
+        <section className="card mb-6 flex flex-col gap-3 p-5 sm:flex-row sm:items-center">
+          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-soft text-brand"><KeyRound className="h-5 w-5" /></span>
+          <div className="flex-1">
+            <h2 className="text-[15px] font-semibold">Password</h2>
+            <p className="text-[12.5px] text-muted">You sign in with a password. Changing it signs out your other sessions.</p>
+          </div>
+          <button type="button" className="btn-secondary" onClick={() => setPwOpen(true)}>Change password</button>
+        </section>
+      )}
+      <Modal open={pwOpen} onClose={() => setPwOpen(false)} title="Change password" size="sm">
+        <ChangePasswordForm onDone={() => setPwOpen(false)} />
+      </Modal>
 
       <section className="card overflow-hidden">
         <div className="flex items-center justify-between border-b border-line px-5 py-4">
