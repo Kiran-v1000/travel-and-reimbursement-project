@@ -26,14 +26,14 @@ export function PolicyTab() {
 
   const save = useMutation({
     mutationFn: () => {
-      const keys = [...NUMS.map(([k]) => k), 'escalationEnabled', 'resubmitRule', 'fallbackApproverId', 'emailNotifications'];
+      const keys = [...NUMS.map(([k]) => k), 'escalationEnabled', 'resubmitRule', 'fallbackApproverId', 'emailNotifications', 'accountingBankLedger', 'accountingAdjustmentLedger'];
       return adminApi.saveSettings(Object.fromEntries(keys.map((k) => [k, NUMS.some(([n]) => n === k) ? Number(s[k]) : s[k]])));
     },
     onSuccess: () => { toast.success('Policy saved', { description: 'New checks apply immediately.' }); qc.invalidateQueries({ queryKey: ['admin', 'settings'] }); qc.invalidateQueries({ queryKey: ['reference'] }); },
     onError: (e) => toast.error(e.message),
   });
   const saveCat = useMutation({
-    mutationFn: () => adminApi.saveCategory(cat.id, { code: cat.code, name: cat.name, icon: cat.icon, perItemLimit: cat.perItemLimit === '' || cat.perItemLimit == null ? null : Number(cat.perItemLimit), receiptThreshold: Number(cat.receiptThreshold), active: cat.active }),
+    mutationFn: () => adminApi.saveCategory(cat.id, { code: cat.code, name: cat.name, icon: cat.icon, perItemLimit: cat.perItemLimit === '' || cat.perItemLimit == null ? null : Number(cat.perItemLimit), receiptThreshold: Number(cat.receiptThreshold), glAccount: cat.glAccount?.trim() || null, active: cat.active }),
     onSuccess: () => { toast.success('Category saved'); setCat(null); qc.invalidateQueries({ queryKey: ['admin', 'categories'] }); qc.invalidateQueries({ queryKey: ['reference'] }); },
     onError: (e) => toast.error(e.message),
   });
@@ -61,24 +61,29 @@ export function PolicyTab() {
           <label className="flex items-center gap-2 self-end pb-2.5 text-[13px]"><input type="checkbox" className="h-4 w-4 accent-[rgb(var(--brand))]" checked={!!s.escalationEnabled} onChange={(e) => setS({ ...s, escalationEnabled: e.target.checked })} /> Escalate overdue approvals</label>
           <label className="flex items-center gap-2 self-end pb-2.5 text-[13px]"><input type="checkbox" className="h-4 w-4 accent-[rgb(var(--brand))]" checked={s.emailNotifications !== false} onChange={(e) => setS({ ...s, emailNotifications: e.target.checked })} /> Email notifications</label>
         </div>
+        <div className="mt-5 grid gap-4 border-t border-line pt-5 sm:grid-cols-2">
+          <Field label="Bank ledger (accounting export)" hint="Payments are credited to this ledger"><input className="input" maxLength={120} value={s.accountingBankLedger ?? ''} onChange={(e) => setS({ ...s, accountingBankLedger: e.target.value })} /></Field>
+          <Field label="Adjustment ledger" hint="Takes any difference between amount paid and amount claimed"><input className="input" maxLength={120} value={s.accountingAdjustmentLedger ?? ''} onChange={(e) => setS({ ...s, accountingAdjustmentLedger: e.target.value })} /></Field>
+        </div>
       </section>
 
       <section className="card overflow-hidden">
         <div className="flex items-center justify-between border-b border-line px-5 py-4">
           <h3 className="text-[14.5px] font-semibold">Expense categories</h3>
-          <button type="button" className="btn-secondary" onClick={() => setCat({ code: '', name: '', icon: 'receipt', perItemLimit: '', receiptThreshold: 500, active: true })}><Plus className="h-4 w-4" /> Add category</button>
+          <button type="button" className="btn-secondary" onClick={() => setCat({ code: '', name: '', icon: 'receipt', perItemLimit: '', receiptThreshold: 500, glAccount: '', active: true })}><Plus className="h-4 w-4" /> Add category</button>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-[13px]">
-            <thead><tr className="bg-subtle/50 text-left text-[11px] uppercase tracking-wide text-muted"><th className="px-5 py-2.5 font-semibold">Category</th><th className="px-3 py-2.5 text-right font-semibold">Per-item limit</th><th className="px-3 py-2.5 text-right font-semibold">Receipt above</th><th className="px-3 py-2.5 font-semibold">Status</th><th /></tr></thead>
+            <thead><tr className="bg-subtle/50 text-left text-[11px] uppercase tracking-wide text-muted"><th className="px-5 py-2.5 font-semibold">Category</th><th className="px-3 py-2.5 text-right font-semibold">Per-item limit</th><th className="px-3 py-2.5 text-right font-semibold">Receipt above</th><th className="px-3 py-2.5 font-semibold">Ledger</th><th className="px-3 py-2.5 font-semibold">Status</th><th /></tr></thead>
             <tbody>
               {cats.map((c) => (
                 <tr key={c.id} className="table-row border-t border-line/60">
                   <td className="px-5 py-2.5 font-medium">{c.name} <span className="font-mono text-[11px] text-muted">{c.code}</span></td>
                   <td className="num px-3 py-2.5 text-right">{c.perItemLimit ? money(c.perItemLimit) : 'No limit'}</td>
                   <td className="num px-3 py-2.5 text-right">{Number(c.receiptThreshold) === 0 ? 'Always' : money(c.receiptThreshold)}</td>
+                  <td className="px-3 py-2.5">{c.glAccount || <span className="text-warn">Not set</span>}</td>
                   <td className="px-3 py-2.5">{c.active ? 'Active' : 'Hidden'}</td>
-                  <td className="px-3 py-2.5 text-right"><button type="button" className="btn-ghost h-8 w-8 px-0" onClick={() => setCat({ ...c, perItemLimit: c.perItemLimit ?? '' })} aria-label={`Edit ${c.name}`}><Pencil className="h-3.5 w-3.5" /></button></td>
+                  <td className="px-3 py-2.5 text-right"><button type="button" className="btn-ghost h-8 w-8 px-0" onClick={() => setCat({ ...c, perItemLimit: c.perItemLimit ?? '', glAccount: c.glAccount ?? '' })} aria-label={`Edit ${c.name}`}><Pencil className="h-3.5 w-3.5" /></button></td>
                 </tr>
               ))}
             </tbody>
@@ -94,6 +99,7 @@ export function PolicyTab() {
             <Field label="Code"><input className="input font-mono" value={cat.code} onChange={(e) => setCat({ ...cat, code: e.target.value.toUpperCase() })} /></Field>
             <Field label="Per-item limit (INR)" hint="Blank = no limit"><input type="number" className="input num" value={cat.perItemLimit} onChange={(e) => setCat({ ...cat, perItemLimit: e.target.value })} /></Field>
             <Field label="Receipt required above" hint="0 = always"><input type="number" className="input num" value={cat.receiptThreshold} onChange={(e) => setCat({ ...cat, receiptThreshold: e.target.value })} /></Field>
+            <Field label="Accounting ledger" hint="GL account in Tally / your books" className="sm:col-span-2"><input className="input" maxLength={120} placeholder="e.g. Travel - Airfare" value={cat.glAccount} onChange={(e) => setCat({ ...cat, glAccount: e.target.value })} /></Field>
             <Field label="Icon"><select className="input" value={cat.icon} onChange={(e) => setCat({ ...cat, icon: e.target.value })}>{['plane', 'train', 'bed', 'utensils', 'car', 'stamp', 'wine', 'wifi', 'receipt'].map((i) => <option key={i}>{i}</option>)}</select></Field>
             <label className="flex items-center gap-2 self-end pb-2.5 text-[13px]"><input type="checkbox" className="h-4 w-4 accent-[rgb(var(--brand))]" checked={cat.active} onChange={(e) => setCat({ ...cat, active: e.target.checked })} /> Active</label>
           </div>

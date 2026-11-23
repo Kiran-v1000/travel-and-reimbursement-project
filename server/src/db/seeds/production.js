@@ -40,8 +40,8 @@ async function main() {
   log(`currencies: ${n} added`);
 
   n = 0;
-  for (const [code, name, icon, perItemLimit, receiptThreshold] of CATEGORIES) {
-    if (!(await prisma.expenseCategory.findUnique({ where: { code } }))) { await prisma.expenseCategory.create({ data: { code, name, icon, perItemLimit, receiptThreshold } }); n++; }
+  for (const [code, name, icon, perItemLimit, receiptThreshold, glAccount] of CATEGORIES) {
+    if (!(await prisma.expenseCategory.findUnique({ where: { code } }))) { await prisma.expenseCategory.create({ data: { code, name, icon, perItemLimit, receiptThreshold, glAccount } }); n++; }
   }
   log(`expense categories: ${n} added`);
 

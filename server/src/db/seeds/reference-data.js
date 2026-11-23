@@ -15,17 +15,17 @@ export const CURRENCIES = [
   ['JPY', 'Japanese Yen', '¥', 0.56],
 ];
 
-// [code, name, icon, per-item limit (null = none), receipt required above]
+// [code, name, icon, per-item limit (null = none), receipt required above, accounting ledger]
 export const CATEGORIES = [
-  ['AIRFARE', 'Airfare', 'plane', null, 0],
-  ['RAIL', 'Train & bus', 'train', 10000, 300],
-  ['LODGING', 'Hotel & lodging', 'bed', 25000, 0],
-  ['MEALS', 'Meals', 'utensils', 3000, 500],
-  ['TAXI', 'Taxi & local transport', 'car', 5000, 300],
-  ['VISA', 'Visa & travel fees', 'stamp', null, 0],
-  ['CLIENT', 'Client entertainment', 'wine', 10000, 500],
-  ['INTERNET', 'Phone & internet', 'wifi', 2000, 500],
-  ['MISC', 'Other business expense', 'receipt', 5000, 500],
+  ['AIRFARE', 'Airfare', 'plane', null, 0, 'Travel - Airfare'],
+  ['RAIL', 'Train & bus', 'train', 10000, 300, 'Travel - Rail & Bus'],
+  ['LODGING', 'Hotel & lodging', 'bed', 25000, 0, 'Travel - Lodging'],
+  ['MEALS', 'Meals', 'utensils', 3000, 500, 'Travel - Meals'],
+  ['TAXI', 'Taxi & local transport', 'car', 5000, 300, 'Local Conveyance'],
+  ['VISA', 'Visa & travel fees', 'stamp', null, 0, 'Travel - Visa & Fees'],
+  ['CLIENT', 'Client entertainment', 'wine', 10000, 500, 'Business Promotion'],
+  ['INTERNET', 'Phone & internet', 'wifi', 2000, 500, 'Telephone & Internet'],
+  ['MISC', 'Other business expense', 'receipt', 5000, 500, 'Miscellaneous Expenses'],
 ];
 
 export const DEFAULT_SETTINGS = {
@@ -43,6 +43,10 @@ export const DEFAULT_SETTINGS = {
   resubmitRule: 'RESTART',
   emailNotifications: true,
   retentionYears: 8,
+  // Accounting export: payments are credited to this ledger; rounding / partial-payment
+  // differences go to the adjustment ledger so every voucher balances.
+  accountingBankLedger: 'Bank Account',
+  accountingAdjustmentLedger: 'Reimbursement Adjustments',
 };
 
 export const LEVELS = {

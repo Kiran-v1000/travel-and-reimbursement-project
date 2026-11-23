@@ -62,6 +62,14 @@ export async function attachLineCounts(reports, getReport = (r) => r) {
   return reports;
 }
 
+/** One CSV cell: quotes when needed and neutralises spreadsheet formula injection. */
+export function csvCell(v) {
+  if (v == null) return '';
+  let s = v instanceof Date ? v.toISOString() : String(v);
+  if (/^[=+\-@]/.test(s) && !/^-?\d+(\.\d+)?$/.test(s)) s = `'${s}`;
+  return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+}
+
 export function toCsv(rows, columns) {
   const esc = (v) => {
     if (v == null) return '';

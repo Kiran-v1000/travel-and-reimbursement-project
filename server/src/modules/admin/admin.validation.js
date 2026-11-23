@@ -38,6 +38,7 @@ export const categorySchema = z.object({
   icon: z.string().trim().max(40).default('receipt'),
   perItemLimit: z.coerce.number().min(0).nullable().optional(),
   receiptThreshold: z.coerce.number().min(0).default(500),
+  glAccount: z.string().trim().max(120).nullable().optional(),
   active: z.boolean().default(true),
 });
 
@@ -78,6 +79,8 @@ export const settingsSchema = z
     fallbackApproverId: z.string().nullable(),
     emailNotifications: z.boolean(),
     retentionYears: z.coerce.number().int().min(1).max(30),
+    accountingBankLedger: z.string().trim().min(1).max(120),
+    accountingAdjustmentLedger: z.string().trim().min(1).max(120),
   })
   .partial()
   .strict();

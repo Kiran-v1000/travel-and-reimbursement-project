@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { usePaged } from '../../../shared/hooks/usePaged.js';
 import { motion } from 'framer-motion';
-import { Landmark, ArrowRight, CalendarClock, Wallet, ShieldAlert, Clock } from 'lucide-react';
+import { Landmark, ArrowRight, CalendarClock, Wallet, ShieldAlert, Clock, BookOpenCheck } from 'lucide-react';
 import { PageHeader, Tabs, SkeletonRows, EmptyState, AnimatedNumber, LoadMore } from '../../../shared/components/ui/primitives.jsx';
 import { Avatar } from '../../../shared/components/ui/Avatar.jsx';
 import { StatusChip } from '../../../shared/components/ui/StatusChip.jsx';
@@ -11,11 +11,13 @@ import { money, date, ago } from '../../../shared/utils/format.js';
 import { PAYMENT_METHODS } from '../../../shared/utils/status.js';
 import { list, item } from '../../../shared/lib/motion.js';
 import { financeApi } from '../api/financeApi.js';
+import { AccountingExportDialog } from '../components/AccountingExportDialog.jsx';
 
 export function FinancePage() {
   const navigate = useNavigate();
   const [tab, setTab] = useState('queue');
   const [flagged, setFlagged] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const queue = usePaged(['finance', 'queue', flagged], (p) => financeApi.queue({ flagged: flagged || undefined, ...p }));
   const scheduled = usePaged(['finance', 'payments', 'SCHEDULED'], (p) => financeApi.payments('SCHEDULED', p));
   const paid = usePaged(['finance', 'payments', 'PAID'], (p) => financeApi.payments('PAID', p));
@@ -29,7 +31,9 @@ export function FinancePage() {
 
   return (
     <div>
-      <PageHeader kicker="Finance" title="Reimbursement desk" description="Review manager-approved reports, correct coding, schedule payouts and record payments." />
+      <PageHeader kicker="Finance" title="Reimbursement desk" description="Review manager-approved reports, correct coding, schedule payouts and record payments."
+        actions={<button type="button" className="btn-secondary" onClick={() => setExporting(true)}><BookOpenCheck className="h-4 w-4" /> Accounting export</button>} />
+      <AccountingExportDialog open={exporting} onClose={() => setExporting(false)} />
 
       <motion.div variants={list} initial="initial" animate="animate" className="mb-6 grid gap-4 sm:grid-cols-3">
         {kpis.map((k) => (

@@ -42,7 +42,7 @@ async function main() {
 
   const cats = {};
   for (const c of CATEGORIES) {
-    cats[c[0]] = await prisma.expenseCategory.create({ data: { code: c[0], name: c[1], icon: c[2], perItemLimit: c[3], receiptThreshold: c[4] } });
+    cats[c[0]] = await prisma.expenseCategory.create({ data: { code: c[0], name: c[1], icon: c[2], perItemLimit: c[3], receiptThreshold: c[4], glAccount: c[5] } });
   }
 
   const cc = {};

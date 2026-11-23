@@ -76,6 +76,11 @@ export const notFoundHandler = (req, _res, next) => next(new AppError(404, `Rout
 
 // eslint-disable-next-line no-unused-vars
 export const errorHandler = (err, req, res, _next) => {
+  if (res.headersSent) {
+    // A streamed response failed part-way; the stream has been aborted, just log it.
+    console.error(err);
+    return;
+  }
   if (err instanceof ZodError) {
     return res.status(422).json({
       error: { code: 'VALIDATION', message: 'Please check the highlighted fields', fields: err.flatten().fieldErrors },

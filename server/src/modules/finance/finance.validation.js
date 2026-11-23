@@ -22,3 +22,11 @@ export const paymentSchema = z.object({
   paidAt: z.coerce.date(),
   reference: z.string().trim().min(3, 'Enter the bank / transaction reference').max(80),
 });
+
+const isoDay = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Use a YYYY-MM-DD date');
+
+export const exportSchema = z.object({
+  from: isoDay,
+  to: isoDay,
+  format: z.enum(['CSV', 'TALLY']).default('CSV'),
+});

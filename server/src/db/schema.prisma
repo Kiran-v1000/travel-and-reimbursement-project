@@ -129,6 +129,7 @@ model User {
   delegationsTaken Delegation[]    @relation("Delegate")
   notifications    Notification[]
   payments         Payment[]
+  accountingExports AccountingExport[]
   attachments      Attachment[]
   createdAt        DateTime        @default(now())
   updatedAt        DateTime        @updatedAt
@@ -294,6 +295,8 @@ model ExpenseCategory {
   icon             String        @default("receipt")
   perItemLimit     Decimal?      @db.Decimal(14, 2)
   receiptThreshold Decimal       @default(500) @db.Decimal(14, 2)
+  /// Ledger / GL account the expense is booked to in accounting (e.g. "Travel - Airfare").
+  glAccount        String?
   active           Boolean       @default(true)
   lines            ExpenseLine[]
   createdAt        DateTime      @default(now())
@@ -360,8 +363,31 @@ model Payment {
   status       PaymentStatus @default(SCHEDULED)
   recordedById String
   recordedBy   User          @relation(fields: [recordedById], references: [id])
+  /// Set when the payment is included in an accounting export (prevents double booking).
+  exportBatchId String?
+  exportBatch   AccountingExport? @relation(fields: [exportBatchId], references: [id])
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
+
+  @@index([status, paidAt])
+  @@index([exportBatchId])
+}
+
+/// One accounting export run (CSV journal or Tally XML) - can be re-downloaded exactly.
+model AccountingExport {
+  id          String    @id @default(cuid())
+  format      String // CSV | TALLY
+  fromDate    DateTime
+  toDate      DateTime
+  payments    Int       @default(0)
+  lines       Int       @default(0)
+  total       Decimal   @default(0) @db.Decimal(16, 2)
+  createdById String
+  createdBy   User      @relation(fields: [createdById], references: [id])
+  createdAt   DateTime  @default(now())
+  items       Payment[]
+
+  @@index([createdAt])
 }
 
 model Attachment {
