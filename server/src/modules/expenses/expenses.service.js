@@ -9,6 +9,7 @@ import { checkExpense, hasViolation } from '../policy/policy.service.js';
 import { selectRule, createRoute } from '../approvals/approvals.engine.js';
 import { previewRoute, returningLevel } from '../approvals/approvals.preview.js';
 import { timeline } from '../approvals/approvals.service.js';
+import { assertChangeable, holdsFor } from '../compliance/compliance.holds.service.js';
 
 const EDITABLE = ['DRAFT', 'RETURNED'];
 
@@ -66,11 +67,12 @@ export async function get(user, id) {
   if (!r) throw notFound('Expense report');
   const steps = await timeline({ expenseReportId: id });
   await assertCanView(user, { ownerId: r.employeeId, entityType: 'EXPENSE', steps });
-  const [revisions, activity] = await Promise.all([
+  const [revisions, activity, legalHolds] = await Promise.all([
     prisma.revision.findMany({ where: { entityType: 'EXPENSE', entityId: id }, orderBy: { version: 'desc' } }),
     prisma.auditLog.findMany({ where: { entityType: 'EXPENSE', entityId: id }, orderBy: { seq: 'asc' } }),
+    holdsFor('EXPENSE', r),
   ]);
-  return { ...r, steps, revisions, activity };
+  return { ...r, steps, revisions, activity, legalHolds };
 }
 
 async function assertLinkable(user, travelRequestId) {
@@ -91,10 +93,11 @@ export async function create(user, data) {
   return r;
 }
 
-async function loadOwned(user, id) {
+async function loadOwned(user, id, { forChange = true } = {}) {
   const r = await prisma.expenseReport.findUnique({ where: { id } });
   if (!r) throw notFound('Expense report');
   if (r.employeeId !== user.id) throw forbidden('Only the claimant can change this report');
+  if (forChange) await assertChangeable('EXPENSE', r);
   return r;
 }
 
@@ -162,7 +165,7 @@ export async function deleteLine(user, id, lineId) {
 }
 
 export async function policy(user, id) {
-  const r = await loadOwned(user, id);
+  const r = await loadOwned(user, id, { forChange: false });
   const { flags, total } = await recalc(id);
   const costCenter = r.costCenterId ? await prisma.costCenter.findUnique({ where: { id: r.costCenterId } }) : null;
   const route = await previewRoute(user.id, { entityType: 'EXPENSE', amount: total, costCenterCode: costCenter?.code, hasException: hasViolation(flags) });

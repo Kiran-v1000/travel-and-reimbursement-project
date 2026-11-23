@@ -43,6 +43,8 @@ export const DEFAULT_SETTINGS = {
   resubmitRule: 'RESTART',
   emailNotifications: true,
   retentionYears: 8,
+  // Purging is off until an administrator reviews the preview and switches it on.
+  retentionAutoPurge: false,
   // Accounting export: payments are credited to this ledger; rounding / partial-payment
   // differences go to the adjustment ledger so every voucher balances.
   accountingBankLedger: 'Bank Account',

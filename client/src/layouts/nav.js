@@ -1,4 +1,4 @@
-import { LayoutDashboard, Plane, Receipt, Inbox, Landmark, BarChart3, Settings2, ShieldCheck } from 'lucide-react';
+import { LayoutDashboard, Plane, Receipt, Inbox, Landmark, BarChart3, Settings2, ShieldCheck, Archive } from 'lucide-react';
 
 export const NAV = [
   { to: '/', label: 'Home', icon: LayoutDashboard, end: true },
@@ -8,5 +8,6 @@ export const NAV = [
   { to: '/finance', label: 'Finance', icon: Landmark, roles: ['FINANCE', 'ADMIN'] },
   { to: '/reports', label: 'Reports', icon: BarChart3, roles: ['MANAGER', 'FINANCE', 'ADMIN', 'AUDITOR'] },
   { to: '/audit', label: 'Audit trail', icon: ShieldCheck, roles: ['ADMIN', 'AUDITOR', 'FINANCE'] },
+  { to: '/compliance', label: 'Retention & holds', icon: Archive, roles: ['ADMIN', 'FINANCE', 'AUDITOR'] },
   { to: '/admin', label: 'Administration', icon: Settings2, roles: ['ADMIN'] },
 ];

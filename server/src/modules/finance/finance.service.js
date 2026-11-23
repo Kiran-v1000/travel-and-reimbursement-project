@@ -4,6 +4,7 @@ import { num, getSetting, paging, attachLineCounts } from '../../shared/utils/in
 import { audit } from '../audit/audit.service.js';
 import { notify } from '../notifications/notifications.service.js';
 import { recalc } from '../expenses/expenses.service.js';
+import { assertChangeable } from '../compliance/compliance.holds.service.js';
 
 const queueSelect = {
   id: true, code: true, title: true, totalBase: true, status: true, approvedAt: true, submittedAt: true, policyFlags: true, exceptionReason: true,
@@ -84,6 +85,7 @@ export async function decide(user, id, { action, comment, method, scheduledFor }
 export async function recode(user, id, { costCenterId, projectCode, lines = [] }) {
   const r = await loadForFinance(id);
   if (!['FINANCE_REVIEW', 'SCHEDULED'].includes(r.status)) throw conflict('Coding can only be corrected during Finance review');
+  await assertChangeable('EXPENSE', r);
   const changes = [];
   if (costCenterId && costCenterId !== r.costCenterId) changes.push({ field: 'costCenterId', from: r.costCenterId, to: costCenterId });
   if (projectCode !== undefined && projectCode !== r.projectCode) changes.push({ field: 'projectCode', from: r.projectCode, to: projectCode });

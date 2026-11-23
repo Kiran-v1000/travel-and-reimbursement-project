@@ -79,6 +79,7 @@ export const settingsSchema = z
     fallbackApproverId: z.string().nullable(),
     emailNotifications: z.boolean(),
     retentionYears: z.coerce.number().int().min(1).max(30),
+    retentionAutoPurge: z.boolean(),
     accountingBankLedger: z.string().trim().min(1).max(120),
     accountingAdjustmentLedger: z.string().trim().min(1).max(120),
   })

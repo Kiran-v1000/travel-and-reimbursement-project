@@ -9,6 +9,7 @@ import { checkTravel, hasViolation } from '../policy/policy.service.js';
 import { selectRule, createRoute } from '../approvals/approvals.engine.js';
 import { previewRoute, returningLevel } from '../approvals/approvals.preview.js';
 import { timeline } from '../approvals/approvals.service.js';
+import { assertChangeable, holdsFor } from '../compliance/compliance.holds.service.js';
 
 const listSelect = {
   id: true, code: true, title: true, origin: true, destination: true, travelType: true, startDate: true, endDate: true,
@@ -70,7 +71,8 @@ export async function get(user, id) {
   await assertCanView(user, { ownerId: t.requesterId, entityType: 'TRAVEL', steps });
   const revisions = await prisma.revision.findMany({ where: { entityType: 'TRAVEL', entityId: id }, orderBy: { version: 'desc' } });
   const activity = await prisma.auditLog.findMany({ where: { entityType: 'TRAVEL', entityId: id }, orderBy: { seq: 'asc' } });
-  return { ...t, steps, revisions, activity };
+  const legalHolds = await holdsFor('TRAVEL', t);
+  return { ...t, steps, revisions, activity, legalHolds };
 }
 
 export async function create(user, data) {
@@ -90,6 +92,7 @@ async function loadOwned(user, id) {
   const t = await prisma.travelRequest.findUnique({ where: { id } });
   if (!t) throw notFound('Travel request');
   if (t.requesterId !== user.id) throw forbidden('Only the requester can change this request');
+  await assertChangeable('TRAVEL', t);
   return t;
 }
 

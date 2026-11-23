@@ -3,6 +3,7 @@ import { env } from '../config/env.js';
 import { prisma } from '../db/pool.js';
 import { escalateOverdue } from '../modules/approvals/approvals.service.js';
 import { warmOrgAnalytics } from '../modules/reports/reports.service.js';
+import { scheduledRun as retentionRun } from '../modules/compliance/compliance.retention.service.js';
 
 const tasks = [];
 
@@ -46,6 +47,18 @@ export function startJobs() {
         if (total) console.log(`[jobs] removed ${total} old notifications`);
       } catch (err) {
         console.error('[jobs] notification cleanup failed', err.message);
+      }
+    }),
+  );
+
+  // Nightly retention purge - only when an administrator has switched automatic purging on.
+  tasks.push(
+    cron.schedule('43 2 * * *', async () => {
+      try {
+        const run = await retentionRun();
+        if (run) console.log(`[jobs] retention purged ${run.expenses} report(s), ${run.trips} trip(s), ${run.files} file(s)`);
+      } catch (err) {
+        console.error('[jobs] retention run failed', err.message);
       }
     }),
   );

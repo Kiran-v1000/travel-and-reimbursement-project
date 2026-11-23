@@ -13,6 +13,7 @@ import { PolicyFlags, hasViolation } from '../../../shared/components/PolicyFlag
 import { FileDrop } from '../../../shared/components/FileDrop.jsx';
 import { ActivityLog } from '../../../shared/components/ActivityLog.jsx';
 import { StageProgress } from '../../../shared/components/StageProgress.jsx';
+import { RecordLockBanner } from '../../../shared/components/RecordLockBanner.jsx';
 import { DecisionBar } from '../../../shared/components/DecisionBar.jsx';
 import { money, date, nights, dateTime } from '../../../shared/utils/format.js';
 import { TRAVEL_STAGES } from '../../../shared/utils/status.js';
@@ -53,6 +54,7 @@ export function TravelDetailPage() {
     }
   }
 
+  const locked = !!t.purgedAt || !!t.legalHolds?.length;
   return (
     <div>
       <div className="mb-5 flex items-center gap-2 text-[12.5px] text-muted">
@@ -66,6 +68,7 @@ export function TravelDetailPage() {
       </div>
 
       <DecisionBar steps={t.steps} round={t.round} requesterId={t.requesterId} onDone={refetch} />
+      <RecordLockBanner holds={t.legalHolds} purgedAt={t.purgedAt} />
 
       <div className="card mb-6 p-5 md:p-6">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
@@ -86,16 +89,16 @@ export function TravelDetailPage() {
             </div>
           </div>
           <div className="flex flex-wrap gap-2">
-            {editable && (
+            {editable && !locked && (
               <>
                 <Link to={`/travel/${id}/edit`} className="btn-secondary"><Pencil className="h-4 w-4" /> Edit</Link>
                 <button type="button" className="btn-primary" onClick={() => setConfirm('submit')}><Send className="h-4 w-4" /> {t.status === 'RETURNED' ? 'Resubmit' : 'Submit'}</button>
               </>
             )}
-            {mine && ['PENDING', 'RETURNED'].includes(t.status) && (
+            {mine && !locked && ['PENDING', 'RETURNED'].includes(t.status) && (
               <button type="button" className="btn-secondary" onClick={() => setConfirm('withdraw')}><Undo className="h-4 w-4" /> Withdraw</button>
             )}
-            {mine && t.status === 'DRAFT' && (
+            {mine && !locked && t.status === 'DRAFT' && (
               <button type="button" className="btn-ghost text-bad" onClick={() => setConfirm('delete')}><Trash2 className="h-4 w-4" /> Delete</button>
             )}
             {mine && t.status !== 'DRAFT' && (

@@ -6,6 +6,7 @@ import { badRequest, notFound, forbidden, conflict } from '../../shared/errors/A
 import { assertCanView } from '../../shared/utils/access.js';
 import { audit } from '../audit/audit.service.js';
 import { recalc } from '../expenses/expenses.service.js';
+import { assertChangeable } from '../compliance/compliance.holds.service.js';
 
 export const uploadDir = path.resolve(env.UPLOAD_DIR);
 fs.mkdirSync(uploadDir, { recursive: true });
@@ -85,6 +86,9 @@ export async function remove(user, id) {
   const ctx = await ownerContext(att);
   if (ctx.ownerId !== user.id) throw forbidden();
   if (!EDITABLE.includes(ctx.status)) throw conflict('Files can only be removed while the item is a draft or returned');
+  await assertChangeable(ctx.entityType, att.travelRequestId
+    ? await prisma.travelRequest.findUnique({ where: { id: att.travelRequestId } })
+    : await prisma.expenseReport.findUnique({ where: { id: ctx.reportId } }));
   await prisma.attachment.delete({ where: { id: att.id } });
   fs.rmSync(path.join(uploadDir, path.basename(att.storedName)), { force: true });
   if (ctx.reportId) await recalc(ctx.reportId);

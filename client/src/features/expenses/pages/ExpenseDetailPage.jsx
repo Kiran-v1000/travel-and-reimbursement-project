@@ -14,6 +14,7 @@ import { PolicyFlags, FlagCount, hasViolation } from '../../../shared/components
 import { RoutePreview } from '../../../shared/components/RoutePreview.jsx';
 import { ActivityLog } from '../../../shared/components/ActivityLog.jsx';
 import { StageProgress } from '../../../shared/components/StageProgress.jsx';
+import { RecordLockBanner } from '../../../shared/components/RecordLockBanner.jsx';
 import { DecisionBar } from '../../../shared/components/DecisionBar.jsx';
 import { fileUrl } from '../../../shared/lib/api.js';
 import { money, date, dateTime } from '../../../shared/utils/format.js';
@@ -31,7 +32,7 @@ export function ExpenseDetailPage() {
   const user = useAppStore((s) => s.user);
   const { data: r, isLoading, error, refetch } = useExpense(id);
   const mine = r?.employeeId === user.id;
-  const editable = mine && ['DRAFT', 'RETURNED'].includes(r?.status);
+  const editable = mine && ['DRAFT', 'RETURNED'].includes(r?.status) && !r?.purgedAt && !r?.legalHolds?.length;
   const { data: policy, refetch: refetchPolicy, isFetching: checking } = useExpensePolicy(id, !!editable);
   const [editor, setEditor] = useState({ open: false, line: null });
   const [tab, setTab] = useState('approvals');
@@ -66,6 +67,7 @@ export function ExpenseDetailPage() {
     }
   }
 
+  const locked = !!r.purgedAt || !!r.legalHolds?.length;
   return (
     <div>
       <div className="mb-5 flex items-center gap-2 text-[12.5px] text-muted">
@@ -78,6 +80,7 @@ export function ExpenseDetailPage() {
 
       <DecisionBar steps={r.steps} round={r.round} requesterId={r.employeeId} onDone={refetch} />
       {isFinance && <FinancePanel report={r} onDone={refetch} />}
+      <RecordLockBanner holds={r.legalHolds} purgedAt={r.purgedAt} />
 
       {r.status === 'RETURNED' && (
         <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} className="mb-6 flex items-start gap-3 rounded-2xl border border-warn/30 bg-warn/[0.07] p-4 text-[13px]">
@@ -111,8 +114,8 @@ export function ExpenseDetailPage() {
             </div>
           </div>
           <div className="flex flex-wrap gap-2">
-            {mine && ['PENDING', 'RETURNED'].includes(r.status) && <button type="button" className="btn-secondary" onClick={() => setConfirm('withdraw')}><Undo className="h-4 w-4" /> Withdraw</button>}
-            {mine && r.status === 'DRAFT' && <button type="button" className="btn-ghost text-bad" onClick={() => setConfirm('delete')}><Trash2 className="h-4 w-4" /> Delete draft</button>}
+            {mine && !locked && ['PENDING', 'RETURNED'].includes(r.status) && <button type="button" className="btn-secondary" onClick={() => setConfirm('withdraw')}><Undo className="h-4 w-4" /> Withdraw</button>}
+            {mine && !locked && r.status === 'DRAFT' && <button type="button" className="btn-ghost text-bad" onClick={() => setConfirm('delete')}><Trash2 className="h-4 w-4" /> Delete draft</button>}
           </div>
         </div>
         <div className="mt-6"><StageProgress stages={EXPENSE_STAGES} status={r.status} /></div>
