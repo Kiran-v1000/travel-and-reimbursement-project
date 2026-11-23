@@ -9,6 +9,12 @@ const server = app.listen(env.PORT, () => {
   startJobs();
 });
 
+// Keep idle sockets open longer than the reverse proxy does (nginx / Vite reuse them).
+// With Node's 5 s default the API could close a socket the proxy was about to reuse,
+// and that request failed with ECONNRESET (seen by users as a random 500 / "Network error").
+server.keepAliveTimeout = 65_000;
+server.headersTimeout = 66_000;
+
 async function shutdown(signal) {
   console.log(`${signal} received, shutting down`);
   stopJobs();

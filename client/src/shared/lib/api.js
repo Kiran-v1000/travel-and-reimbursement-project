@@ -18,7 +18,16 @@ api.interceptors.response.use(
     const status = error.response?.status;
     const body = error.response?.data?.error;
     if (status === 401 && !error.config?.url?.startsWith('/auth/')) onUnauthorized();
-    const err = new Error(body?.message || (error.code === 'ECONNABORTED' ? 'The server took too long to respond' : 'Network error - please try again'));
+    // No JSON error body means the request never got a proper answer from the API
+    // (server restarting, proxy could not connect, offline).
+    const unreachable = !body && (!status || status >= 500);
+    const fallback =
+      error.code === 'ECONNABORTED'
+        ? 'The server took too long to respond. Please try again.'
+        : unreachable
+          ? "We can't reach the Voyage server right now. Please try again in a moment."
+          : 'Something went wrong. Please try again.';
+    const err = new Error(body?.message || fallback);
     err.status = status;
     err.code = body?.code;
     err.fields = body?.fields;
