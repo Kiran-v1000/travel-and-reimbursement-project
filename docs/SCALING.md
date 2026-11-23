@@ -80,7 +80,9 @@ createdb travel_reimbursement_scale
 export DATABASE_URL="postgresql://USER:PASS@127.0.0.1:5432/travel_reimbursement_scale?schema=public"
 npx prisma migrate deploy && node src/db/seeds/seed.js && node src/db/seeds/scale.js   # ~4 min
 PORT=4011 API_RATE_LIMIT_PER_MIN=1000000 REQUEST_LOGGING=false node src/server.js &
-TARGET=http://localhost:4011 node tests/load/load-test.js
+TARGET=http://localhost:4011 node tests/load/load-test.js --live   # watch it at http://localhost:4099
 ```
+
+With `--live` the test serves a real-time dashboard on http://localhost:4099. It shows the current scenario, requests per second, p50/p99 response time and errors updating every second, plus a results table that fills in as each scenario finishes.
 
 `scale.js` refuses to run against the main `travel_reimbursement` database.
