@@ -2,7 +2,7 @@ import cron from 'node-cron';
 import { env } from '../config/env.js';
 import { prisma } from '../db/pool.js';
 import { escalateOverdue } from '../modules/approvals/approvals.service.js';
-import { warmOrgAnalytics } from '../modules/reports/reports.service.js';
+import { warmOrgAnalytics, precomputeAnalytics } from '../modules/reports/reports.service.js';
 import { scheduledRun as retentionRun } from '../modules/compliance/compliance.retention.service.js';
 
 const tasks = [];
@@ -47,6 +47,19 @@ export function startJobs() {
         if (total) console.log(`[jobs] removed ${total} old notifications`);
       } catch (err) {
         console.error('[jobs] notification cleanup failed', err.message);
+      }
+    }),
+  );
+
+  // Nightly: rebuild year-to-date analytics for the organisation and every large team, so the
+  // first person to open them in the morning does not wait. One server per night does it.
+  tasks.push(
+    cron.schedule('20 3 * * *', async () => {
+      try {
+        const r = await precomputeAnalytics();
+        if (r) console.log(`[jobs] analytics precomputed for ${r.built}/${r.scopes} scope(s) in ${Math.round(r.ms / 1000)}s, ${r.removed} old snapshot(s) removed`);
+      } catch (err) {
+        console.error('[jobs] analytics precompute failed', err.message);
       }
     }),
   );

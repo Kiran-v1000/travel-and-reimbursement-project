@@ -4,12 +4,12 @@ import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import clsx from 'clsx';
 import { Bar, BarChart, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis, CartesianGrid } from 'recharts';
-import { Download, IndianRupee, Plane, Inbox, ShieldAlert, Undo2 } from 'lucide-react';
+import { Download, IndianRupee, Plane, Inbox, ShieldAlert, Undo2, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAppStore, hasRole } from '../../../app/store.js';
 import { PageHeader, Skeleton, AnimatedNumber } from '../../../shared/components/ui/primitives.jsx';
 import { StatusChip } from '../../../shared/components/ui/StatusChip.jsx';
-import { money, compact, isoDay } from '../../../shared/utils/format.js';
+import { money, compact, isoDay, ago } from '../../../shared/utils/format.js';
 import { list, item } from '../../../shared/lib/motion.js';
 import { reportsApi } from '../api/reportsApi.js';
 
@@ -28,7 +28,8 @@ function Tip({ active, payload, label }) {
 
 function Panel({ title, action, children, className }) {
   return (
-    <motion.section variants={item} className={clsx('card p-5', className)}>
+    // min-w-0: a grid item may shrink below its content, so wide tables scroll inside the card.
+    <motion.section variants={item} className={clsx('card min-w-0 p-5', className)}>
       <div className="mb-4 flex items-center justify-between">
         <h2 className="text-[14.5px] font-semibold">{title}</h2>
         {action}
@@ -48,7 +49,10 @@ export function ReportsPage() {
   const user = useAppStore((s) => s.user);
   const [preset, setPreset] = useState('ytd');
   const params = { from: PRESETS.find((p) => p.value === preset).from(), to: isoDay(new Date()) };
-  const { data: a, isLoading } = useQuery({ queryKey: ['reports', params], queryFn: () => reportsApi.analytics(params), placeholderData: keepPreviousData });
+  const { data: a, isLoading, isFetching } = useQuery({ queryKey: ['reports', params], queryFn: () => reportsApi.analytics(params), placeholderData: keepPreviousData,
+    // A stored result is being refreshed on the server: pick up the new one when it lands.
+    refetchInterval: (q) => (q.state.data?.refreshing ? 4000 : false),
+  });
   const exp = (kind) => reportsApi.exportCsv(kind, params).catch((e) => toast.error(e.message));
   const scope = hasRole(user, 'FINANCE', 'ADMIN', 'AUDITOR') ? 'Whole organisation' : 'You and your reporting line';
 
@@ -58,6 +62,11 @@ export function ReportsPage() {
         kicker="Reports"
         title="Spend analytics"
         description={`${scope}. Exports follow the same access rules as this page.`}
+        children={a?.computedAt && (
+          <p className="mt-1.5 inline-flex items-center gap-1.5 text-[12px] text-muted" title={new Date(a.computedAt).toLocaleString('en-IN')}>
+            <RefreshCw className={clsx('h-3 w-3', isFetching && 'animate-spin')} aria-hidden /> {a.refreshing ? `Showing figures from ${ago(a.computedAt)} · updating…` : `Updated ${ago(a.computedAt)}`}
+          </p>
+        )}
         actions={
           <div className="inline-flex rounded-xl bg-subtle p-1">
             {PRESETS.map((p) => (

@@ -543,3 +543,16 @@ model RetentionRun {
 
   @@index([startedAt])
 }
+
+/// A finished analytics result for one scope + date range, shared by every API server and kept
+/// across restarts. Served at once; refreshed in the background when older than the cache time.
+/// Built nightly for the whole organisation and every large team.
+model AnalyticsSnapshot {
+  /// "<scope user id | org>|<from>|<to>"
+  key        String   @id
+  data       Json
+  computedAt DateTime
+  computeMs  Int
+
+  @@index([computedAt])
+}

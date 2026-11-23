@@ -39,6 +39,11 @@ export function memo(namespace, key, ttlMs, compute, maxEntries = 5000, staleMs 
   return value;
 }
 
+/** Drop one cached entry, so the next call loads it again. */
+export function forget(namespace, key) {
+  stores.get(namespace)?.delete(key);
+}
+
 /** Limit how many expensive jobs run at once (protects the DB connection pool). */
 export function semaphore(max) {
   let active = 0;

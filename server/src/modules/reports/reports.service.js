@@ -1,7 +1,7 @@
 import { Prisma } from '@prisma/client';
 import { prisma } from '../../db/pool.js';
 import { num, toCsv } from '../../shared/utils/index.js';
-import { memo, semaphore } from '../../shared/utils/cache.js';
+import { forget, memo, semaphore } from '../../shared/utils/cache.js';
 import { inbox } from '../approvals/approvals.service.js';
 
 const ACTIVE_EXPENSE = ['PENDING', 'FINANCE_REVIEW', 'SCHEDULED', 'PAID'];
@@ -13,9 +13,13 @@ const OPEN_APPROVALS_LIMIT = 200;
  * safe for a CEO with 100k people underneath).
  */
 const scopeOf = (user) => (['FINANCE', 'ADMIN', 'AUDITOR'].includes(user.role) ? null : user.id);
-// Semi-join on the owner: (u.id = me OR u.ancestors @> {me}) uses the pk + GIN indexes.
-const sqlScope = (me, col = Prisma.sql`r."employeeId"`) =>
-  me ? Prisma.sql`AND ${col} IN (SELECT tu.id FROM "User" tu WHERE tu.id = ${me} OR tu."ancestors" @> ARRAY[${me}::text])` : Prisma.empty;
+/**
+ * The team as a row set: me, plus everyone whose ancestors contain me (GIN index).
+ * Written as a UNION, not "id = me OR ancestors @> {me}": with the OR, PostgreSQL scans every
+ * user; with the UNION it reads only the team and drives index lookups from it.
+ */
+const teamSql = (me) => Prisma.sql`(SELECT ${me}::text AS id UNION ALL SELECT tu.id FROM "User" tu WHERE tu."ancestors" @> ARRAY[${me}::text])`;
+const sqlScope = (me, col = Prisma.sql`r."employeeId"`) => (me ? Prisma.sql`AND ${col} IN ${teamSql(me)}` : Prisma.empty);
 
 export async function dashboard(user) {
   const now = new Date();
@@ -104,16 +108,72 @@ async function analyticsScope(user) {
   });
 }
 
-const rangeOf = (q) => {
-  const from = q.from ? new Date(q.from) : new Date(new Date().getFullYear(), 0, 1);
-  const to = q.to ? new Date(q.to) : new Date();
-  to.setHours(23, 59, 59, 999);
-  return { from, to };
+/**
+ * Date range of a request. Dates are calendar days (UTC), exactly as the page sends them.
+ * A range that ends today or yesterday is "up to now" (open-ended): browsers and servers in
+ * different time zones disagree about which day "today" is, and the nightly snapshot must be
+ * found by everyone who opens the year-to-date view the next morning.
+ */
+const DAY = 86400_000;
+export const rangeOf = (q) => {
+  const now = new Date();
+  const from = q.from ? new Date(`${String(q.from).slice(0, 10)}T00:00:00.000Z`) : new Date(Date.UTC(now.getUTCFullYear(), 0, 1));
+  let to = q.to ? new Date(`${String(q.to).slice(0, 10)}T23:59:59.999Z`) : null;
+  const openEnded = !to || to.getTime() >= Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()) - DAY;
+  if (openEnded) to = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()) + 2 * DAY - 1); // end of tomorrow
+  return { from, to, openEnded };
 };
 
+/*
+ * Persisted snapshots. A finished result is stored in AnalyticsSnapshot, so it is shared by every
+ * API server and survives restarts and deploys:
+ *   - snapshot younger than ANALYTICS_CACHE_SECONDS  -> served as is;
+ *   - older, but under a day                          -> served at once, refreshed in the background;
+ *   - missing or older than a day                     -> computed now.
+ * Every result carries `computedAt`, which the page shows ("Updated 3 min ago").
+ * The nightly job builds the year-to-date view for the whole organisation and every large team,
+ * so even the first person to open a big team's analytics in the morning gets it instantly.
+ */
+const SNAPSHOT_SERVE_STALE_MS = 24 * 3600_000;
+const refreshing = new Set();
+// An open-ended range (ending today or later) is keyed 'now', so it is the same entry all day, in every time zone.
+export const keyOf = (me, from, to) => `${me ?? 'org'}|${from.toISOString().slice(0, 10)}|${to.getTime() > Date.now() ? 'now' : to.toISOString().slice(0, 10)}`;
+
+async function computeAndStore(me, from, to, key) {
+  const started = Date.now();
+  const result = await analyticsSlots(() => computeAnalytics(me, from, to));
+  const computedAt = new Date();
+  // Store exactly what the API returns (JSON), so a snapshot and a fresh result are identical.
+  const data = JSON.parse(JSON.stringify({ ...result, computedAt }));
+  const computeMs = Date.now() - started;
+  await prisma.analyticsSnapshot.upsert({ where: { key }, create: { key, data, computedAt, computeMs }, update: { data, computedAt, computeMs } });
+  return data;
+}
+
+function refreshInBackground(me, from, to, key) {
+  if (refreshing.has(key)) return;
+  refreshing.add(key);
+  computeAndStore(me, from, to, key)
+    .then(() => forget('analytics', key))
+    .catch((err) => console.error('[analytics] background refresh failed', key, err.message))
+    .finally(() => refreshing.delete(key));
+}
+
+async function loadAnalytics(me, from, to, key) {
+  const snap = await prisma.analyticsSnapshot.findUnique({ where: { key }, select: { data: true, computedAt: true } });
+  const age = snap ? Date.now() - snap.computedAt.getTime() : Infinity;
+  if (age < ANALYTICS_TTL_MS) return snap.data;
+  if (age < SNAPSHOT_SERVE_STALE_MS) {
+    refreshInBackground(me, from, to, key);
+    // Tell the page a newer result is on its way, so it checks back in a few seconds.
+    return { ...snap.data, refreshing: true };
+  }
+  return computeAndStore(me, from, to, key);
+}
+
 function cachedAnalytics(me, from, to) {
-  const key = `${me ?? 'org'}|${from.toISOString().slice(0, 10)}|${to.toISOString().slice(0, 10)}`;
-  return memo('analytics', key, ANALYTICS_TTL_MS, () => analyticsSlots(() => computeAnalytics(me, from, to)), 2000, ANALYTICS_STALE_MS);
+  const key = keyOf(me, from, to);
+  return memo('analytics', key, ANALYTICS_TTL_MS, () => loadAnalytics(me, from, to, key), 2000, ANALYTICS_STALE_MS);
 }
 
 export async function analytics(user, q) {
@@ -127,11 +187,62 @@ export function warmOrgAnalytics() {
   return cachedAnalytics(null, from, to);
 }
 
-async function computeAnalytics(me, from, to) {
+/** Smallest team whose year-to-date analytics is built every night. */
+const PRECOMPUTE_MIN_TEAM = Number(process.env.ANALYTICS_PRECOMPUTE_MIN_TEAM ?? 200);
+
+/**
+ * Nightly: rebuild the year-to-date snapshot for the organisation and for every team of at least
+ * PRECOMPUTE_MIN_TEAM people (one at a time), then drop snapshots nobody has opened for 3 days.
+ * Only one server does it per night (a lease row in Counter).
+ */
+export async function precomputeAnalytics({ minTeam = PRECOMPUTE_MIN_TEAM } = {}) {
+  const nowMin = Math.floor(Date.now() / 60_000);
+  const claimed = await prisma.$executeRaw`
+    INSERT INTO "Counter" ("key", "value") VALUES ('analytics-precompute', ${nowMin})
+    ON CONFLICT ("key") DO UPDATE SET "value" = EXCLUDED."value" WHERE "Counter"."value" < ${nowMin - 60}`;
+  if (!claimed) return null;
+
+  const started = Date.now();
+  const { from, to } = rangeOf({});
+  const [{ all }] = await prisma.$queryRaw`SELECT count(*)::int AS "all" FROM "User"`;
+  // One pass over the paths gives every manager's team size.
+  const teams = await prisma.$queryRaw`
+    SELECT a AS id, count(*)::int AS team FROM "User", unnest("ancestors") AS a
+    GROUP BY a HAVING count(*) >= ${minTeam} ORDER BY count(*) DESC`;
+  // Someone whose team is ~the whole company shares the organisation view (see analyticsScope).
+  const scopes = [null, ...teams.filter((t) => t.team < all * 0.9).map((t) => t.id)];
+  let built = 0;
+  for (const me of scopes) {
+    const key = keyOf(me, from, to);
+    try {
+      await computeAndStore(me, from, to, key);
+      forget('analytics', key);
+      built++;
+    } catch (err) {
+      console.error('[analytics] precompute failed', key, err.message);
+    }
+  }
+  const { count: removed } = await prisma.analyticsSnapshot.deleteMany({ where: { computedAt: { lt: new Date(Date.now() - 3 * 86400_000) } } });
+  return { built, scopes: scopes.length, removed, ms: Date.now() - started };
+}
+
+/**
+ * Runs in one transaction (one connection) with custom plans forced: these statements are
+ * prepared, and after a few runs PostgreSQL may switch to a generic plan that ignores which team
+ * is asked for - fine for a 10-person team, a full scan (and a timeout) for a 10k one.
+ */
+function computeAnalytics(me, from, to) {
+  return prisma.$transaction(async (db) => {
+    await db.$executeRaw`SET LOCAL plan_cache_mode = force_custom_plan`;
+    return computeAnalyticsIn(db, me, from, to);
+  }, { timeout: 120_000, maxWait: 30_000 });
+}
+
+async function computeAnalyticsIn(db, me, from, to) {
   const owner = (col) => sqlScope(me, col);
 
   // One pass over the lines with GROUPING SETS instead of five separate scans.
-  const grouped = await prisma.$queryRaw`
+  const grouped = await db.$queryRaw`
     WITH scoped AS (
       SELECT l."baseAmount", l.amount, l.currency, to_char(date_trunc('month', l."date"), 'YYYY-MM') AS month,
              c.name AS category, COALESCE(d.name, 'Unassigned') AS department, COALESCE(cc.code, '—') AS cost_center
@@ -157,22 +268,26 @@ async function computeAnalytics(me, from, to) {
   const byCostCenter = pick('costCenter');
   const byCurrency = pick('currency');
 
-  const [travelTotals] = await prisma.$queryRaw`
+  const [travelTotals] = await db.$queryRaw`
     SELECT COALESCE(SUM(t."estTotalBase"), 0)::float AS total, COUNT(*)::int AS count FROM "TravelRequest" t
     WHERE t."startDate" BETWEEN ${from} AND ${to} AND t.status::text IN ('PENDING', 'APPROVED') ${owner(Prisma.sql`t."requesterId"`)}`;
 
-  // Open approvals: count + oldest N ids in SQL (no OR across relations), then load details.
-  const openFrom = Prisma.sql`
-    FROM "ApprovalStep" s
-    LEFT JOIN "TravelRequest" t ON t.id = s."travelRequestId"
-    LEFT JOIN "ExpenseReport" r ON r.id = s."expenseReportId"
-    WHERE s.status = 'PENDING' ${owner(Prisma.sql`COALESCE(t."requesterId", r."employeeId")`)}`;
-  const [{ count: openCount }] = await prisma.$queryRaw`SELECT COUNT(*)::int AS count ${openFrom}`;
-  const openIds = (await prisma.$queryRaw`SELECT s.id ${openFrom} ORDER BY s."activatedAt" ASC NULLS LAST LIMIT ${OPEN_APPROVALS_LIMIT}`).map((r) => r.id);
+  // Open approvals: count + oldest N ids in SQL, then load details. Expense and travel steps are
+  // scoped separately - a COALESCE over both owners cannot use an index.
+  const openFrom = me
+    ? Prisma.sql`FROM (
+        SELECT s.id, s."activatedAt" FROM "ApprovalStep" s JOIN "ExpenseReport" r ON r.id = s."expenseReportId"
+        WHERE s.status = 'PENDING' AND r."employeeId" IN ${teamSql(me)}
+        UNION ALL
+        SELECT s.id, s."activatedAt" FROM "ApprovalStep" s JOIN "TravelRequest" t ON t.id = s."travelRequestId"
+        WHERE s.status = 'PENDING' AND t."requesterId" IN ${teamSql(me)}) s`
+    : Prisma.sql`FROM "ApprovalStep" s WHERE s.status = 'PENDING'`;
+  const [{ count: openCount }] = await db.$queryRaw`SELECT COUNT(*)::int AS count ${openFrom}`;
+  const openIds = (await db.$queryRaw`SELECT s.id ${openFrom} ORDER BY s."activatedAt" ASC NULLS LAST, s.id LIMIT ${OPEN_APPROVALS_LIMIT}`).map((r) => r.id);
   const open = openIds.length
-    ? await prisma.approvalStep.findMany({
+    ? await db.approvalStep.findMany({
         where: { id: { in: openIds } },
-        orderBy: { activatedAt: 'asc' },
+        orderBy: [{ activatedAt: 'asc' }, { id: 'asc' }],
         include: {
           approver: { select: { name: true } },
           travelRequest: { select: { code: true, estTotalBase: true, requester: { select: { name: true, department: { select: { name: true } } } } } },
@@ -182,20 +297,20 @@ async function computeAnalytics(me, from, to) {
     : [];
 
   const exceptionFrom = Prisma.sql`FROM "ExpenseReport" r WHERE r."policyFlags" <> '[]'::jsonb AND r.status::text NOT IN ('DRAFT', 'WITHDRAWN') ${owner(Prisma.sql`r."employeeId"`)}`;
-  const [{ count: exceptionsCount }] = await prisma.$queryRaw`SELECT COUNT(*)::int AS count ${exceptionFrom}`;
-  const exceptionIds = (await prisma.$queryRaw`SELECT r.id ${exceptionFrom} ORDER BY r."updatedAt" DESC LIMIT 50`).map((r) => r.id);
+  const [{ count: exceptionsCount }] = await db.$queryRaw`SELECT COUNT(*)::int AS count ${exceptionFrom}`;
+  const exceptionIds = (await db.$queryRaw`SELECT r.id ${exceptionFrom} ORDER BY r."updatedAt" DESC, r.id DESC LIMIT 50`).map((r) => r.id);
   const exceptions = exceptionIds.length
-    ? await prisma.expenseReport.findMany({
+    ? await db.expenseReport.findMany({
         where: { id: { in: exceptionIds } },
         select: { id: true, code: true, title: true, status: true, policyFlags: true, exceptionReason: true, totalBase: true, employee: { select: { name: true } } },
-        orderBy: { updatedAt: 'desc' },
+        orderBy: [{ updatedAt: 'desc' }, { id: 'desc' }],
       })
     : [];
 
-  const [{ count: returnedRejected }] = await prisma.$queryRaw`
+  const [{ count: returnedRejected }] = await db.$queryRaw`
     SELECT COUNT(*)::int AS count FROM "ExpenseReport" r WHERE r.status::text IN ('RETURNED', 'REJECTED') ${owner(Prisma.sql`r."employeeId"`)}`;
   // Aggregated in the database, not in Node.
-  const aging = await prisma.$queryRaw`
+  const aging = await db.$queryRaw`
     SELECT CASE WHEN age <= 7 THEN '0-7 days' WHEN age <= 14 THEN '8-14 days' WHEN age <= 30 THEN '15-30 days' ELSE '30+ days' END AS label,
            SUM(total)::float AS total
     FROM (SELECT EXTRACT(DAY FROM now() - COALESCE(r."approvedAt", now()))::int AS age, r."totalBase" AS total
