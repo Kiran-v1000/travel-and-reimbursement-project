@@ -34,6 +34,11 @@ export function FinancePanel({ report, onDone }) {
       refresh();
     } catch (err) {
       toast.error(err.message);
+      // Someone (or an earlier click) already moved this report on: show its real state.
+      if (err.status === 409) {
+        setDialog(null);
+        refresh();
+      }
     } finally {
       setBusy(false);
     }

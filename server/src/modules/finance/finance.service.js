@@ -104,6 +104,12 @@ export async function recode(user, id, { costCenterId, projectCode, lines = [] }
 
 export async function recordPayment(user, id, data) {
   const r = await loadForFinance(id);
+  if (r.status === 'PAID') {
+    const p = await prisma.payment.findUnique({ where: { reportId: id } });
+    // Same payment submitted again (double click, stale screen): treat as success.
+    if (p?.reference && p.reference === data.reference) return { ok: true, alreadyPaid: true };
+    throw conflict(`${r.code} is already marked as paid${p?.reference ? ` (reference ${p.reference})` : ''}.`);
+  }
   if (r.status !== 'SCHEDULED') throw conflict('Only scheduled reimbursements can be marked as paid');
   const base = await getSetting('baseCurrency', 'INR');
   await prisma.$transaction([
