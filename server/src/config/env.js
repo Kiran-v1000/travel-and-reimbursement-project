@@ -15,6 +15,19 @@ const schema = z.object({
     .string()
     .optional()
     .transform((v) => v === 'true'),
+  // Microsoft Entra ID (Azure AD) single sign-on
+  AZURE_AD_TENANT_ID: z.string().optional(),
+  AZURE_AD_CLIENT_ID: z.string().optional(),
+  AZURE_AD_CLIENT_SECRET: z.string().optional(),
+  AZURE_AD_REDIRECT_URI: z.string().default('http://localhost:5195/api/auth/sso/callback'),
+  SSO_ALLOWED_DOMAINS: z
+    .string()
+    .default('utthunga.com')
+    .transform((v) => v.split(',').map((d) => d.trim().toLowerCase()).filter(Boolean)),
+  SSO_AUTO_PROVISION: z
+    .string()
+    .optional()
+    .transform((v) => v !== 'false'),
   SMTP_HOST: z.string().optional(),
   SMTP_PORT: z.coerce.number().optional(),
   SMTP_USER: z.string().optional(),
@@ -31,4 +44,9 @@ if (!parsed.success) {
 }
 
 export const env = parsed.data;
+
+if (env.SSO_ENABLED && !(env.AZURE_AD_TENANT_ID && env.AZURE_AD_CLIENT_ID && env.AZURE_AD_CLIENT_SECRET)) {
+  console.error('SSO_ENABLED=true needs AZURE_AD_TENANT_ID, AZURE_AD_CLIENT_ID and AZURE_AD_CLIENT_SECRET.');
+  process.exit(1);
+}
 export const isProd = env.NODE_ENV === 'production';

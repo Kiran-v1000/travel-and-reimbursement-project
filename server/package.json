@@ -23,6 +23,7 @@
     "seed": "node src/db/seeds/seed.js"
   },
   "dependencies": {
+    "@azure/msal-node": "^2.16.3",
     "@prisma/client": "^5.22.0",
     "bcryptjs": "^2.4.3",
     "compression": "^1.7.5",

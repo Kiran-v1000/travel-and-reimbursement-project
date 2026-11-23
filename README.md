@@ -60,7 +60,7 @@ npm run dev                   # http://localhost:5195
 
 Demo accounts (password `Voyage@123`): `rahul@` / `ananya@` / `priya@` (employees), `neha@` (manager),
 `vikram@` (director, dept head), `arjun@` (sales head), `asha@` (CEO), `meera@` / `sanjay@` (Finance),
-`admin@` (administrator), `auditor@` (read-only) — all `@voyage.io`.
+`auditor@` (read-only) — all `@voyage.io`. Administrator: `admin@utthunga.com` / `admin@123`.
 
 Tests: `npm test` (unit) and `npm run test:e2e` (needs a seeded database) in `server/`.
 
@@ -74,8 +74,26 @@ Tests: `npm test` (unit) and `npm run test:e2e` (needs a seeded database) in `se
   `UPLOAD_DIR` an absolute path writable by the service user.
 - Configure `SMTP_*` to enable email notifications; without it notifications are in-app only.
 
+## Microsoft SSO (@utthunga.com)
+
+Company users sign in with **Sign in with Microsoft** (Entra ID / Azure AD, OpenID Connect
+authorization-code flow with PKCE, state and nonce). Only the configured tenant and the
+`SSO_ALLOWED_DOMAINS` (default `utthunga.com`) are accepted. On first sign-in a user is linked
+by email, or auto-created as an Employee (`SSO_AUTO_PROVISION`); an administrator then sets
+their manager, department and role in **Administration → People**.
+
+To switch it on, ask IT for an Entra ID app registration:
+
+1. Platform **Web**, redirect URI `https://<your-host>/api/auth/sso/callback`
+   (locally `http://localhost:5195/api/auth/sso/callback`).
+2. Delegated permissions `openid`, `profile`, `email`, `User.Read`; create a client secret.
+3. In `server/.env` set `AZURE_AD_TENANT_ID`, `AZURE_AD_CLIENT_ID`, `AZURE_AD_CLIENT_SECRET`,
+   `AZURE_AD_REDIRECT_URI` and `SSO_ENABLED=true`, then restart the API.
+
+The local administrator **admin@utthunga.com** signs in with a password (seeded from
+`SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD`; change it after first sign-in).
+
 ## Open decisions (from the SRS)
 
-SSO provider (the "Continue with company SSO" button is wired to a 501 placeholder), payment/ERP
-integrations, real policy values, data residency and backup/retention targets still need
-owners' decisions. Policy values and routing are already configurable in **Administration**.
+Payment/ERP integrations, real policy values, data residency and backup/retention targets
+still need owners' decisions. Policy values and routing are already configurable in **Administration**.

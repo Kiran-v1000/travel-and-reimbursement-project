@@ -14,6 +14,7 @@ export const profileSelect = {
   location: true,
   active: true,
   lastLoginAt: true,
+  azureOid: true,
   department: { select: { id: true, name: true, code: true } },
   costCenter: { select: { id: true, name: true, code: true } },
   manager: { select: { id: true, name: true, email: true } },

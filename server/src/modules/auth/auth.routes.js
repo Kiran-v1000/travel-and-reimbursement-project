@@ -9,7 +9,8 @@ const loginLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 20, standardHe
 
 router.get('/config', c.config);
 router.post('/login', loginLimiter, validate(loginSchema), h(c.login));
-router.post('/sso', h(c.sso));
+router.get('/sso/start', loginLimiter, h(c.ssoStart));
+router.get('/sso/callback', loginLimiter, h(c.ssoCallback));
 router.post('/logout', c.logout);
 router.get('/me', authenticate, h(c.me));
 

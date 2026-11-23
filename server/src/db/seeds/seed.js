@@ -20,6 +20,8 @@ import { createDelegation } from '../../modules/users/users.service.js';
 import { audit } from '../../modules/audit/audit.service.js';
 
 const PASSWORD = 'Voyage@123';
+const ADMIN_EMAIL = process.env.SEED_ADMIN_EMAIL || 'admin@utthunga.com';
+const ADMIN_PASSWORD = process.env.SEED_ADMIN_PASSWORD || 'admin@123';
 const DAY = 86400000;
 const daysFromNow = (n) => new Date(Date.now() + n * DAY);
 const dateOnly = (d) => new Date(d.toISOString().slice(0, 10));
@@ -75,7 +77,11 @@ async function main() {
   const vikram = await mk('E1002', 'Vikram Iyer', 'vikram@voyage.io', 'MANAGER', 'Director, Engineering', 'ENG', 'CC-210', asha.id);
   const arjun = await mk('E1003', 'Arjun Shah', 'arjun@voyage.io', 'MANAGER', 'Head of Sales', 'SALES', 'CC-310', asha.id, 'Mumbai');
   const meera = await mk('E1004', 'Meera Pillai', 'meera@voyage.io', 'FINANCE', 'Finance Controller', 'FIN', 'CC-410', asha.id);
-  const divya = await mk('E1005', 'Divya Kulkarni', 'admin@voyage.io', 'ADMIN', 'Travel & Systems Administrator', 'OPS', 'CC-100', asha.id);
+  // Local administrator (password sign-in). Everyone else at the company signs in with Microsoft SSO.
+  const divya = await prisma.user.update({
+    where: { id: (await mk('E1005', 'Divya Kulkarni', ADMIN_EMAIL, 'ADMIN', 'Travel & Systems Administrator', 'OPS', 'CC-100', asha.id)).id },
+    data: { passwordHash: await bcrypt.hash(ADMIN_PASSWORD, 10) },
+  });
   const neha = await mk('E1010', 'Neha Kapoor', 'neha@voyage.io', 'MANAGER', 'Engineering Manager', 'ENG', 'CC-210', vikram.id);
   const sanjay = await mk('E1011', 'Sanjay Gupta', 'sanjay@voyage.io', 'FINANCE', 'Finance Analyst', 'FIN', 'CC-410', meera.id);
   const rahul = await mk('E1020', 'Rahul Menon', 'rahul@voyage.io', 'EMPLOYEE', 'Senior Software Engineer', 'ENG', 'CC-210', neha.id);
@@ -273,8 +279,9 @@ async function main() {
   console.table([
     ['Employee', 'rahul@voyage.io'], ['Employee', 'ananya@voyage.io'], ['Employee', 'priya@voyage.io'],
     ['Manager', 'neha@voyage.io'], ['Director / dept head', 'vikram@voyage.io'], ['Sales head', 'arjun@voyage.io'], ['CEO', 'asha@voyage.io'],
-    ['Finance', 'meera@voyage.io'], ['Finance', 'sanjay@voyage.io'], ['Admin', 'admin@voyage.io'], ['Auditor', 'auditor@voyage.io'],
+    ['Finance', 'meera@voyage.io'], ['Finance', 'sanjay@voyage.io'], ['Auditor', 'auditor@voyage.io'],
   ].map(([role, email]) => ({ role, email })));
+  console.log('Administrator: %s (password: %s) - change it after first sign-in.', ADMIN_EMAIL, ADMIN_PASSWORD);
   void ravi;
 }
 

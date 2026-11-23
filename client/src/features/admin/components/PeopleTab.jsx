@@ -55,6 +55,7 @@ export function PeopleTab() {
                 <p className="truncate text-[13.5px] font-medium">{u.name} <span className="text-[12px] font-normal text-muted">· {u.employeeId}</span></p>
                 <p className="truncate text-[12px] text-muted">{u.title} · {u.department?.name ?? 'No department'} · reports to {u.manager?.name ?? '—'}</p>
               </div>
+              {u.azureOid && <span className="hidden rounded-full bg-info/10 px-2 py-0.5 text-[11.5px] font-medium text-info sm:inline" title="Signs in with Microsoft">Microsoft SSO</span>}
               <span className="hidden rounded-full bg-brand/10 px-2 py-0.5 text-[11.5px] font-medium text-brand-ink sm:inline">{ROLE_LABEL[u.role]}</span>
               <span className="hidden w-24 text-right text-[11.5px] text-muted md:block">{u.lastLoginAt ? ago(u.lastLoginAt) : 'Never'}</span>
               <button type="button" className="btn-ghost h-8 w-8 px-0" onClick={() => open(u)} aria-label={`Edit ${u.name}`}><Pencil className="h-3.5 w-3.5" /></button>

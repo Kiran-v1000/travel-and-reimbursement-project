@@ -100,6 +100,8 @@ model User {
   name             String
   email            String          @unique
   passwordHash     String?
+  /// Microsoft Entra ID object id, set on first SSO sign-in.
+  azureOid         String?         @unique
   role             Role            @default(EMPLOYEE)
   title            String?
   location         String?
