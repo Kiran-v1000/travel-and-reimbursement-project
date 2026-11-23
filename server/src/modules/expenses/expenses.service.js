@@ -1,7 +1,8 @@
 import { prisma } from '../../db/pool.js';
 import { badRequest, forbidden, notFound, conflict, AppError } from '../../shared/errors/AppError.js';
-import { nextCode, toBase, round2, getSetting, num, paging, toCsv } from '../../shared/utils/index.js';
+import { nextCode, toBase, round2, getSetting, num, paging, toCsv, attachLineCounts } from '../../shared/utils/index.js';
 import { assertCanView, visibilityWhere } from '../../shared/utils/access.js';
+import { memo, totalFromCounts } from '../../shared/utils/cache.js';
 import { audit } from '../audit/audit.service.js';
 import { notify } from '../notifications/notifications.service.js';
 import { checkExpense, hasViolation } from '../policy/policy.service.js';
@@ -18,7 +19,6 @@ const listSelect = {
   costCenter: { select: { code: true } },
   payment: { select: { status: true, paidAt: true, scheduledFor: true } },
   steps: { where: { status: 'PENDING' }, select: { label: true, approver: { select: { name: true } } } },
-  _count: { select: { lines: true } },
 };
 
 export async function list(user, q) {
@@ -37,12 +37,17 @@ export async function list(user, q) {
     where.AND.push(s);
     base.push(s);
   }
-  const [items, total, counts] = await Promise.all([
+  // Tab counts double as the total (one aggregate instead of count + groupBy). For team
+  // scopes - up to the whole company for leadership - they are cached for 30s.
+  const countsFn = async () =>
+    Object.fromEntries((await prisma.expenseReport.groupBy({ by: ['status'], where: { AND: base }, _count: true })).map((c) => [c.status, c._count]));
+  const mine = q.scope === 'mine' || !q.scope;
+  const [items, counts] = await Promise.all([
     prisma.expenseReport.findMany({ where, select: listSelect, orderBy: { updatedAt: 'desc' }, skip, take }),
-    prisma.expenseReport.count({ where }),
-    prisma.expenseReport.groupBy({ by: ['status'], where: { AND: base }, _count: true }),
+    mine ? countsFn() : memo('expense-counts', `${user.id}|${q.search ?? ''}`, 30_000, countsFn),
   ]);
-  return { items, total, page, pageSize, counts: Object.fromEntries(counts.map((c) => [c.status, c._count])) };
+  await attachLineCounts(items);
+  return { items, total: totalFromCounts(counts, q.status), page, pageSize, counts };
 }
 
 const fullInclude = {

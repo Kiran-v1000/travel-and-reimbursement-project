@@ -61,15 +61,26 @@ export async function listAudit(q) {
   return { items, total };
 }
 
-/** Recompute every hash; report the first broken link, if any. */
+/**
+ * Recompute every hash in 5k-row pages (constant memory, millions of entries are fine);
+ * report the first broken link, if any.
+ */
 export async function verifyChain() {
-  const rows = await prisma.auditLog.findMany({ orderBy: { seq: 'asc' } });
+  const PAGE = 5000;
   let prev = GENESIS;
-  for (const r of rows) {
-    if (r.prevHash !== prev || digest(r) !== r.hash) return { valid: false, checked: rows.length, brokenAt: r.seq };
-    prev = r.hash;
+  let checked = 0;
+  let after = 0;
+  for (;;) {
+    const rows = await prisma.auditLog.findMany({ where: { seq: { gt: after } }, orderBy: { seq: 'asc' }, take: PAGE });
+    for (const r of rows) {
+      if (r.prevHash !== prev || digest(r) !== r.hash) return { valid: false, checked: checked + 1, brokenAt: r.seq };
+      prev = r.hash;
+      checked++;
+    }
+    if (rows.length < PAGE) break;
+    after = rows[rows.length - 1].seq;
   }
-  return { valid: true, checked: rows.length };
+  return { valid: true, checked };
 }
 
 export async function exportAuditCsv(q) {

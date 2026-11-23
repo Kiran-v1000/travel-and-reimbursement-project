@@ -10,6 +10,25 @@ export const AUTH_COOKIE = 'tr_session';
 /** Wrap async handlers so rejections reach the error middleware. */
 export const asyncHandler = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
 
+// Tiny per-process cache of session users: removes one DB round-trip from every API call.
+// Role / active changes take effect within USER_CACHE_TTL_MS.
+const USER_CACHE_TTL_MS = 30_000;
+const USER_CACHE_MAX = 20_000;
+const userCache = new Map();
+export const forgetCachedUser = (id) => userCache.delete(id);
+
+async function loadSessionUser(id) {
+  const hit = userCache.get(id);
+  if (hit && hit.exp > Date.now()) return hit.user;
+  const user = await prisma.user.findUnique({
+    where: { id },
+    select: { id: true, name: true, email: true, role: true, active: true, managerId: true, departmentId: true },
+  });
+  if (userCache.size >= USER_CACHE_MAX) userCache.delete(userCache.keys().next().value);
+  userCache.set(id, { user, exp: Date.now() + USER_CACHE_TTL_MS });
+  return user;
+}
+
 /** Verify the session cookie and attach the active user. */
 export const authenticate = asyncHandler(async (req, _res, next) => {
   const header = req.headers.authorization;
@@ -21,10 +40,7 @@ export const authenticate = asyncHandler(async (req, _res, next) => {
   } catch {
     throw unauthorized('Session expired, please sign in again');
   }
-  const user = await prisma.user.findUnique({
-    where: { id: payload.sub },
-    select: { id: true, name: true, email: true, role: true, active: true, managerId: true, departmentId: true },
-  });
+  const user = await loadSessionUser(payload.sub);
   if (!user || !user.active) throw unauthorized('Account is inactive');
   req.user = user;
   next();

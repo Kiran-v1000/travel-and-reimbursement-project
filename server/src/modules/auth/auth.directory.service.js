@@ -5,6 +5,7 @@
 import { prisma } from '../../db/pool.js';
 import { env } from '../../config/env.js';
 import { audit } from '../audit/audit.service.js';
+import { setManager, isInSubtree } from '../../shared/utils/orgTree.js';
 
 const GRAPH = 'https://graph.microsoft.com/v1.0';
 const PROFILE_FIELDS = 'displayName,jobTitle,department,officeLocation,mail,userPrincipalName,employeeId';
@@ -22,14 +23,6 @@ export async function fetchDirectoryProfile(accessToken, fetchImpl = fetch) {
 
 const emailOf = (p) => String(p?.mail || p?.userPrincipalName || '').trim().toLowerCase();
 
-async function wouldCreateLoop(userId, managerId) {
-  let cursor = managerId;
-  for (let i = 0; cursor && i < 20; i++) {
-    if (cursor === userId) return true;
-    cursor = (await prisma.user.findUnique({ where: { id: cursor }, select: { managerId: true } }))?.managerId;
-  }
-  return false;
-}
 
 /**
  * Apply directory data to a user: fill empty profile fields and set "reports to" from the
@@ -40,6 +33,7 @@ async function wouldCreateLoop(userId, managerId) {
 export async function applyDirectoryProfile(user, { profile, manager }, allowedDomains = env.SSO_ALLOWED_DOMAINS) {
   const changes = {};
   const patch = {};
+  let newManager;
   if (profile?.jobTitle && !user.title) patch.title = profile.jobTitle;
   if (profile?.officeLocation && !user.location) patch.location = profile.officeLocation;
   if (profile?.department && !user.departmentId) {
@@ -64,18 +58,22 @@ export async function applyDirectoryProfile(user, { profile, manager }, allowedD
       managerId = m.id;
     }
     if (managerId !== (user.managerId ?? null)) {
-      if (managerId && (await wouldCreateLoop(user.id, managerId))) {
+      if (managerId && (await isInSubtree(user.id, managerId))) {
         changes.skipped = 'reporting loop';
       } else if (managerId || manager === null) {
-        patch.managerId = managerId;
+        newManager = { id: managerId };
       }
     }
   }
 
-  if (!Object.keys(patch).length) return { user, changes };
-  const updated = await prisma.user.update({ where: { id: user.id }, data: patch });
-  if ('managerId' in patch) changes.managerId = { from: user.managerId ?? null, to: patch.managerId };
-  Object.assign(changes, Object.fromEntries(Object.keys(patch).filter((k) => k !== 'managerId').map((k) => [k, patch[k]])));
+  if (!Object.keys(patch).length && !newManager) return { user, changes };
+  if (Object.keys(patch).length) await prisma.user.update({ where: { id: user.id }, data: patch });
+  if (newManager) {
+    await setManager(user.id, newManager.id);
+    changes.managerId = { from: user.managerId ?? null, to: newManager.id };
+  }
+  const updated = await prisma.user.findUnique({ where: { id: user.id } });
+  Object.assign(changes, patch);
   await audit(updated, 'user.directory_synced', 'USER', updated.id, changes);
   return { user: updated, changes };
 }

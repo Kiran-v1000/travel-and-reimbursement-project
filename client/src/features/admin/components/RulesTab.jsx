@@ -7,7 +7,8 @@ import { toast } from 'sonner';
 import { Modal } from '../../../shared/components/ui/Modal.jsx';
 import { Field, Spinner, SkeletonRows } from '../../../shared/components/ui/primitives.jsx';
 import { RoutePreview } from '../../../shared/components/RoutePreview.jsx';
-import { useDirectory, useReference } from '../../../shared/hooks/index.js';
+import { useReference, useUsersByIds } from '../../../shared/hooks/index.js';
+import { UserPicker } from '../../../shared/components/UserPicker.jsx';
 import { money } from '../../../shared/utils/format.js';
 import { adminApi } from '../api/adminApi.js';
 
@@ -30,7 +31,6 @@ function describe(rule, people) {
 function RuleEditor({ open, onClose, rule }) {
   const qc = useQueryClient();
   const { data: ref } = useReference();
-  const { data: people = [] } = useDirectory();
   const [r, setR] = useState(blankRule);
   useEffect(() => {
     if (open) setR(rule ? { ...rule, maxAmount: rule.maxAmount ?? '', departmentId: rule.departmentId ?? '', costCenterCode: rule.costCenterCode ?? '', travelType: rule.travelType ?? '', levels: rule.levels.map((l) => ({ ...l, id: ++uid })) } : { ...blankRule, levels: blankRule.levels.map((l) => ({ ...l, id: ++uid })) });
@@ -92,7 +92,7 @@ function RuleEditor({ open, onClose, rule }) {
                         {TYPES.map((t) => <option key={t.v} value={t.v}>{t.label}</option>)}
                       </select>
                       {a.type === 'ROLE' && <select className="input h-8 w-32" value={a.role} onChange={(e) => setLevel(l.id, { approvers: l.approvers.map((x, k) => (k === j ? { ...x, role: e.target.value } : x)) })}>{['FINANCE', 'ADMIN', 'MANAGER'].map((ro) => <option key={ro}>{ro}</option>)}</select>}
-                      {a.type === 'USER' && <select className="input h-8 w-44" value={a.userId ?? ''} onChange={(e) => setLevel(l.id, { approvers: l.approvers.map((x, k) => (k === j ? { ...x, userId: e.target.value } : x)) })}><option value="">Choose…</option>{people.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select>}
+                      {a.type === 'USER' && <UserPicker className="w-full" value={a.userId ?? null} allowClear={false} onChange={(id) => setLevel(l.id, { approvers: l.approvers.map((x, k) => (k === j ? { ...x, userId: id } : x)) })} placeholder="Search person…" ariaLabel="Named approver" />}
                       {l.approvers.length > 1 && <button type="button" className="btn-ghost h-8 w-8 px-0" onClick={() => setLevel(l.id, { approvers: l.approvers.filter((_, k) => k !== j) })} aria-label="Remove approver"><Trash2 className="h-3.5 w-3.5" /></button>}
                     </div>
                   ))}
@@ -110,7 +110,6 @@ function RuleEditor({ open, onClose, rule }) {
 }
 
 function Simulator() {
-  const { data: people = [] } = useDirectory();
   const [s, setS] = useState({ userId: '', entityType: 'TRAVEL', amount: 25000, travelType: 'DOMESTIC', hasException: false });
   const sim = useMutation({ mutationFn: () => adminApi.simulate({ ...s, amount: Number(s.amount) }), onError: (e) => toast.error(e.message) });
   return (
@@ -118,7 +117,7 @@ function Simulator() {
       <h3 className="flex items-center gap-2 text-[14.5px] font-semibold"><FlaskConical className="h-4 w-4 text-brand" /> Test the routing</h3>
       <p className="mb-4 text-[12.5px] text-muted">Pick a person and an amount to see exactly who would approve it.</p>
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
-        <select className="input xl:col-span-2" value={s.userId} onChange={(e) => setS({ ...s, userId: e.target.value })} aria-label="Employee"><option value="">Choose employee…</option>{people.map((p) => <option key={p.id} value={p.id}>{p.name} · {p.title}</option>)}</select>
+        <UserPicker className="xl:col-span-2" value={s.userId || null} onChange={(id) => setS({ ...s, userId: id ?? '' })} placeholder="Search employee…" ariaLabel="Employee" />
         <select className="input" value={s.entityType} onChange={(e) => setS({ ...s, entityType: e.target.value })} aria-label="Type"><option value="TRAVEL">Travel</option><option value="EXPENSE">Expense</option></select>
         {s.entityType === 'TRAVEL' ? <select className="input" value={s.travelType} onChange={(e) => setS({ ...s, travelType: e.target.value })} aria-label="Trip type"><option value="DOMESTIC">Domestic</option><option value="INTERNATIONAL">International</option></select> : <span className="hidden xl:block" />}
         <input type="number" className="input num" value={s.amount} onChange={(e) => setS({ ...s, amount: e.target.value })} aria-label="Amount in INR" />
@@ -135,7 +134,8 @@ function Simulator() {
 export function RulesTab() {
   const qc = useQueryClient();
   const { data: rules, isLoading } = useQuery({ queryKey: ['admin', 'rules'], queryFn: adminApi.rules });
-  const { data: people = [] } = useDirectory();
+  const named = (rules ?? []).flatMap((r) => r.levels.flatMap((l) => l.approvers.filter((a) => a.type === 'USER').map((a) => a.userId)));
+  const { data: people = [] } = useUsersByIds(named);
   const [edit, setEdit] = useState({ open: false, rule: null });
   const off = useMutation({ mutationFn: adminApi.deactivateRule, onSuccess: () => { toast.success('Rule deactivated'); qc.invalidateQueries({ queryKey: ['admin', 'rules'] }); } });
 

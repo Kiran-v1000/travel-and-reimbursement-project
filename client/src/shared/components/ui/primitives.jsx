@@ -130,6 +130,23 @@ export function Tabs({ tabs, value, onChange, id = 'tabs', className }) {
   );
 }
 
+/** Footer for paginated lists: "Showing X of Y" + Load more. */
+export function LoadMore({ shown, total, hasMore, loading, onMore, noun = 'items' }) {
+  if (!total) return null;
+  return (
+    <div className="flex items-center justify-between border-t border-line px-5 py-3 text-[12.5px] text-muted">
+      <span className="num">
+        Showing {shown.toLocaleString('en-IN')} of {total.toLocaleString('en-IN')} {noun}
+      </span>
+      {hasMore && (
+        <button type="button" className="btn-secondary h-8" onClick={onMore} disabled={loading}>
+          {loading && <Spinner />} Load more
+        </button>
+      )}
+    </div>
+  );
+}
+
 export function Segmented({ options, value, onChange }) {
   return <Tabs tabs={options} value={value} onChange={onChange} id={`seg-${options.map((o) => o.value).join('')}`} />;
 }

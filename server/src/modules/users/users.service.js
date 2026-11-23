@@ -3,6 +3,9 @@ import { prisma } from '../../db/pool.js';
 import { badRequest, notFound, forbidden } from '../../shared/errors/AppError.js';
 import { audit } from '../audit/audit.service.js';
 import { notify } from '../notifications/notifications.service.js';
+import { paging } from '../../shared/utils/index.js';
+import { forgetCachedUser } from '../../shared/middlewares/index.js';
+import { setManager, isInSubtree } from '../../shared/utils/orgTree.js';
 
 export const profileSelect = {
   id: true,
@@ -20,42 +23,59 @@ export const profileSelect = {
   manager: { select: { id: true, name: true, email: true } },
 };
 
+const searchWhere = (search) =>
+  search
+    ? {
+        OR: [
+          { name: { contains: search, mode: 'insensitive' } },
+          { email: { contains: search, mode: 'insensitive' } },
+          { employeeId: { contains: search, mode: 'insensitive' } },
+        ],
+      }
+    : {};
+
+/** Admin people list - always paginated (the company has ~100k people). */
 export async function listUsers(q) {
-  const where = {};
-  if (q.search) {
-    where.OR = [
-      { name: { contains: q.search, mode: 'insensitive' } },
-      { email: { contains: q.search, mode: 'insensitive' } },
-      { employeeId: { contains: q.search, mode: 'insensitive' } },
-    ];
-  }
+  const { skip, take, page, pageSize } = paging(q);
+  const where = { ...searchWhere(q.search?.trim()) };
   if (q.role) where.role = q.role;
   if (q.active) where.active = q.active === 'true';
-  return prisma.user.findMany({ where, select: profileSelect, orderBy: { name: 'asc' } });
+  const [items, total] = await Promise.all([
+    prisma.user.findMany({ where, select: profileSelect, orderBy: { name: 'asc' }, skip, take }),
+    prisma.user.count({ where }),
+  ]);
+  return { items, total, page, pageSize };
 }
 
-/** Lightweight directory used by pickers (delegates, travelers). */
-export const directory = () =>
-  prisma.user.findMany({ where: { active: true }, select: { id: true, name: true, email: true, title: true, role: true }, orderBy: { name: 'asc' } });
+const directorySelect = { id: true, name: true, email: true, title: true, role: true };
+
+/**
+ * People picker: type-ahead search (max 20 results) or look up specific ids.
+ * Never returns the whole directory.
+ */
+export async function directory(q) {
+  if (q.ids) {
+    const ids = String(q.ids).split(',').filter(Boolean).slice(0, 50);
+    return prisma.user.findMany({ where: { id: { in: ids } }, select: directorySelect });
+  }
+  const search = q.search?.trim();
+  return prisma.user.findMany({
+    where: { active: true, ...(q.role ? { role: q.role } : {}), ...searchWhere(search) },
+    select: directorySelect,
+    orderBy: { name: 'asc' },
+    take: Math.min(20, parseInt(q.take, 10) || 20),
+  });
+}
 
 async function assertNoCycle(userId, managerId) {
-  let cursor = managerId;
-  const seen = new Set();
-  while (cursor) {
-    if (cursor === userId) throw badRequest('This manager assignment would create a reporting loop');
-    if (seen.has(cursor)) break;
-    seen.add(cursor);
-    const m = await prisma.user.findUnique({ where: { id: cursor }, select: { managerId: true } });
-    cursor = m?.managerId;
-  }
+  if (await isInSubtree(userId, managerId)) throw badRequest('This manager assignment would create a reporting loop');
 }
 
 export async function createUser(actor, data) {
-  const { password, ...rest } = data;
-  const user = await prisma.user.create({
-    data: { ...rest, passwordHash: await bcrypt.hash(password || 'Welcome@123', 10) },
-    select: profileSelect,
-  });
+  const { password, managerId, ...rest } = data;
+  const created = await prisma.user.create({ data: { ...rest, passwordHash: await bcrypt.hash(password || 'Welcome@123', 10) } });
+  if (managerId) await setManager(created.id, managerId);
+  const user = await prisma.user.findUnique({ where: { id: created.id }, select: profileSelect });
   await audit(actor, 'user.created', 'USER', user.id, { email: user.email, role: user.role });
   return user;
 }
@@ -68,10 +88,17 @@ export async function updateUser(actor, id, data) {
     if (data.managerId) await assertNoCycle(id, data.managerId);
   }
   if (actor.id === id && data.role && data.role !== existing.role) throw forbidden('You cannot change your own role');
-  const { password, ...rest } = data;
+  const { password, managerId, ...rest } = data;
   const patch = { ...rest };
   if (password) patch.passwordHash = await bcrypt.hash(password, 10);
-  const user = await prisma.user.update({ where: { id }, data: patch, select: profileSelect });
+  await prisma.$transaction(async (tx) => {
+    if (Object.keys(patch).length) await tx.user.update({ where: { id }, data: patch });
+    // Re-path the user's whole subtree when their manager changes.
+    if (managerId !== undefined && managerId !== existing.managerId) await setManager(id, managerId || null, tx);
+  });
+  const user = await prisma.user.findUnique({ where: { id }, select: profileSelect });
+  forgetCachedUser(id); // role / active changes apply immediately on this instance
+  if (managerId !== undefined) rest.managerId = managerId;
   const changed = Object.keys(rest).filter((k) => String(existing[k] ?? '') !== String(rest[k] ?? ''));
   await audit(actor, 'user.updated', 'USER', id, { changed, ...(password ? { passwordReset: true } : {}) });
   return user;

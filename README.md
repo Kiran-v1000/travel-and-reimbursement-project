@@ -64,10 +64,14 @@ Demo accounts (password `Voyage@123`): `rahul@` / `ananya@` / `priya@` (employee
 
 Tests: `npm test` (unit) and `npm run test:e2e` (needs a seeded database) in `server/`.
 
+## Built for 100,000 people
+
+The app is load-tested with 100,011 users and about 1.5 million records. Everyday screens answer in about 100 to 170 ms (median) with zero errors under load. See [docs/SCALING.md](docs/SCALING.md) for the results, the design and the production sizing.
+
 ## Deploying on Linux
 
 - Run `npm ci` and `npx prisma migrate deploy` on the host; never ship `node_modules`.
-- Run the API with systemd or pm2 (`node src/server.js`) on a high port; put nginx in front.
+- Run the API as a pm2 cluster (`npm run start:cluster`, see `server/ecosystem.config.cjs`) on a high port, with nginx in front (`deploy/nginx.conf`).
 - Build the client on the host (`npm run build`) so `VITE_*` values are correct, serve `client/dist`
   from nginx, and proxy `/api` to the Node server (same origin keeps the session cookie simple).
 - Set `NODE_ENV=production` (secure cookies), `CLIENT_URL` to the public origin, and make

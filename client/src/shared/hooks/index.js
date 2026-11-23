@@ -9,7 +9,26 @@ export const useReference = () => useQuery({ queryKey: ['reference'], queryFn: (
 export const useInbox = (enabled = true) =>
   useQuery({ queryKey: ['approvals', 'inbox'], queryFn: () => get('/approvals/inbox'), enabled, refetchInterval: 60_000 });
 
-export const useDirectory =() => useQuery({ queryKey: ['directory'], queryFn: () => get('/users/directory'), staleTime: 5 * 60 * 1000 });
+/** Type-ahead people search (server returns at most 20). Never loads the whole company. */
+export const useUserSearch = (search, { role, enabled = true } = {}) =>
+  useQuery({
+    queryKey: ['directory', 'search', search, role],
+    queryFn: () => get('/users/directory', { search: search || undefined, role }),
+    enabled,
+    staleTime: 60_000,
+    placeholderData: (p) => p,
+  });
+
+/** Resolve a handful of user ids to names (for showing current selections). */
+export const useUsersByIds = (ids = []) => {
+  const list = [...new Set(ids.filter(Boolean))].sort();
+  return useQuery({
+    queryKey: ['directory', 'ids', list.join(',')],
+    queryFn: () => get('/users/directory', { ids: list.join(',') }),
+    enabled: list.length > 0,
+    staleTime: 5 * 60 * 1000,
+  });
+};
 
 export function useDebounce(value, ms = 300) {
   const [v, setV] = useState(value);

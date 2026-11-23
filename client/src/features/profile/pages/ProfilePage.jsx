@@ -8,7 +8,7 @@ import { get, post, del } from '../../../shared/lib/api.js';
 import { PageHeader, Field, Spinner, EmptyState } from '../../../shared/components/ui/primitives.jsx';
 import { Avatar } from '../../../shared/components/ui/Avatar.jsx';
 import { Modal } from '../../../shared/components/ui/Modal.jsx';
-import { useDirectory } from '../../../shared/hooks/index.js';
+import { UserPicker } from '../../../shared/components/UserPicker.jsx';
 import { date, isoDay } from '../../../shared/utils/format.js';
 import { ROLE_LABEL } from '../../../shared/utils/status.js';
 
@@ -16,7 +16,6 @@ export function ProfilePage() {
   const user = useAppStore((s) => s.user);
   const qc = useQueryClient();
   const { data: delegations = [] } = useQuery({ queryKey: ['delegations'], queryFn: () => get('/users/delegations') });
-  const { data: people = [] } = useDirectory();
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ delegateId: '', scope: 'ALL', startDate: isoDay(new Date()), endDate: isoDay(new Date(Date.now() + 7 * 86400000)), reason: '' });
   const canDelegate = hasRole(user, 'MANAGER', 'FINANCE', 'ADMIN');
@@ -103,10 +102,7 @@ export function ProfilePage() {
       >
         <div className="space-y-4">
           <Field label="Delegate to" required>
-            <select className="input" value={form.delegateId} onChange={(e) => setForm({ ...form, delegateId: e.target.value })}>
-              <option value="">Choose a colleague…</option>
-              {people.filter((p) => p.id !== user.id).map((p) => <option key={p.id} value={p.id}>{p.name} · {p.title}</option>)}
-            </select>
+            <UserPicker value={form.delegateId || null} excludeId={user.id} onChange={(id) => setForm({ ...form, delegateId: id ?? '' })} placeholder="Search for a colleague…" ariaLabel="Delegate to" />
           </Field>
           <Field label="What can they approve?">
             <select className="input" value={form.scope} onChange={(e) => setForm({ ...form, scope: e.target.value })}>

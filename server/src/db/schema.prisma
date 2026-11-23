@@ -112,6 +112,9 @@ model User {
   costCenter       CostCenter?     @relation(fields: [costCenterId], references: [id])
   managerId        String?
   manager          User?           @relation("Reports", fields: [managerId], references: [id])
+  /// Every manager above this user, top first (materialised path). GIN-indexed so
+  /// "whole team under X" is one index lookup even for the CEO of 100k people.
+  ancestors        String[]        @default([])
   reports          User[]          @relation("Reports")
   headOf           Department[]    @relation("DepartmentHead")
   lastLoginAt      DateTime?
@@ -129,6 +132,12 @@ model User {
 
   @@index([managerId])
   @@index([departmentId])
+  @@index([ancestors], type: Gin)
+  @@index([name])
+  // Trigram indexes: fast "contains" search over 100k people (needs the pg_trgm extension).
+  @@index([name(ops: raw("gin_trgm_ops"))], type: Gin, map: "User_name_trgm_idx")
+  @@index([email(ops: raw("gin_trgm_ops"))], type: Gin, map: "User_email_trgm_idx")
+  @@index([employeeId(ops: raw("gin_trgm_ops"))], type: Gin, map: "User_employeeId_trgm_idx")
 }
 
 model Delegation {
@@ -209,6 +218,8 @@ model TravelRequest {
   updatedAt          DateTime        @updatedAt
 
   @@index([requesterId, status])
+  @@index([status, startDate])
+  @@index([updatedAt])
 }
 
 model ExpenseReport {
@@ -243,7 +254,9 @@ model ExpenseReport {
   updatedAt        DateTime        @updatedAt
 
   @@index([employeeId, status])
-  @@index([status])
+  @@index([status, approvedAt])
+  @@index([updatedAt])
+  @@index([travelRequestId])
 }
 
 model ExpenseLine {
@@ -268,6 +281,7 @@ model ExpenseLine {
   updatedAt     DateTime      @updatedAt
 
   @@index([reportId])
+  @@index([date])
 }
 
 model ExpenseCategory {
@@ -324,6 +338,8 @@ model ApprovalStep {
   createdAt       DateTime       @default(now())
 
   @@index([approverId, status])
+  @@index([status, dueAt])
+  @@index([actedById, actedAt])
   @@index([travelRequestId])
   @@index([expenseReportId])
 }
@@ -358,6 +374,10 @@ model Attachment {
   expenseLineId   String?
   expenseLine     ExpenseLine?   @relation(fields: [expenseLineId], references: [id], onDelete: Cascade)
   createdAt       DateTime       @default(now())
+
+  // Foreign keys need indexes, or every parent delete scans this table.
+  @@index([travelRequestId])
+  @@index([expenseLineId])
 }
 
 /// Snapshot of a request / report each time it is (re)submitted.
@@ -385,6 +405,8 @@ model Notification {
   createdAt DateTime @default(now())
 
   @@index([userId, read])
+  @@index([userId, createdAt])
+  @@index([read, createdAt])
 }
 
 /// Append-only, hash-chained audit trail (tamper evident).
@@ -402,6 +424,7 @@ model AuditLog {
   createdAt  DateTime @default(now())
 
   @@index([entityType, entityId])
+  @@index([createdAt])
 }
 
 model Counter {

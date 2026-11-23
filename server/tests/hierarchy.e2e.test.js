@@ -5,6 +5,7 @@ import assert from 'node:assert/strict';
 import { prisma } from '../src/db/pool.js';
 import { previewRoute } from '../src/modules/approvals/approvals.preview.js';
 import { applyDirectoryProfile, fetchDirectoryProfile } from '../src/modules/auth/auth.directory.service.js';
+import { setManager } from '../src/shared/utils/orgTree.js';
 
 const DOMAINS = ['utthunga.com'];
 const tag = Date.now();
@@ -53,7 +54,10 @@ test('directory manager becomes "reports to", and unknown managers are created',
 
 test('sync never creates a loop, ignores other domains, and keeps data when Graph fails', async () => {
   const a = await mkUser(`a.${tag}@utthunga.com`);
-  const b = await mkUser(`b.${tag}@utthunga.com`, { managerId: a.id });
+  let b = await mkUser(`b.${tag}@utthunga.com`);
+  await setManager(b.id, a.id);
+  b = await prisma.user.findUnique({ where: { id: b.id } });
+  assert.deepEqual(b.ancestors, [a.id], 'org tree path is maintained');
   const loop = await applyDirectoryProfile(a, { profile: {}, manager: { mail: b.email } }, DOMAINS);
   assert.equal(loop.user.managerId, null);
   assert.equal(loop.changes.skipped, 'reporting loop');
@@ -63,6 +67,17 @@ test('sync never creates a loop, ignores other domains, and keeps data when Grap
 
   const failed = await applyDirectoryProfile(b, { profile: {}, manager: undefined }, DOMAINS);
   assert.equal(failed.user.managerId, a.id);
+});
+
+test('moving a manager re-paths their whole subtree', async () => {
+  const top = await mkUser(`top.${tag}@utthunga.com`);
+  const mid = await mkUser(`mid.${tag}@utthunga.com`);
+  const leaf = await mkUser(`leaf.${tag}@utthunga.com`);
+  await setManager(leaf.id, mid.id);
+  await setManager(mid.id, top.id);
+  assert.deepEqual((await prisma.user.findUnique({ where: { id: leaf.id } })).ancestors, [top.id, mid.id]);
+  await setManager(mid.id, null);
+  assert.deepEqual((await prisma.user.findUnique({ where: { id: leaf.id } })).ancestors, [mid.id]);
 });
 
 test('Graph client treats a 404 manager as "no manager"', async () => {

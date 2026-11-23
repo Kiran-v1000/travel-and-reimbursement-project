@@ -4,8 +4,8 @@ import cors from 'cors';
 import compression from 'compression';
 import cookieParser from 'cookie-parser';
 import morgan from 'morgan';
-import rateLimit from 'express-rate-limit';
 import { env, isProd } from './config/env.js';
+import { apiLimiter } from './shared/middlewares/rateLimits.js';
 import { prisma } from './db/pool.js';
 import { authenticate, errorHandler, notFoundHandler } from './shared/middlewares/index.js';
 
@@ -32,8 +32,8 @@ export function createApp() {
   app.use(compression());
   app.use(express.json({ limit: '1mb' }));
   app.use(cookieParser());
-  app.use(morgan(isProd ? 'combined' : 'dev'));
-  app.use('/api', rateLimit({ windowMs: 60 * 1000, limit: 600, standardHeaders: true, legacyHeaders: false }));
+  if (env.REQUEST_LOGGING) app.use(morgan(isProd ? 'combined' : 'dev'));
+  app.use('/api', apiLimiter);
 
   app.get('/api/health', async (_req, res) => {
     try {

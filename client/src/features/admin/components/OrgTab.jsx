@@ -4,7 +4,7 @@ import { Plus, Pencil, Check } from 'lucide-react';
 import { toast } from 'sonner';
 import { Modal } from '../../../shared/components/ui/Modal.jsx';
 import { Field, Spinner } from '../../../shared/components/ui/primitives.jsx';
-import { useDirectory } from '../../../shared/hooks/index.js';
+import { UserPicker } from '../../../shared/components/UserPicker.jsx';
 import { dateTime } from '../../../shared/utils/format.js';
 import { adminApi } from '../api/adminApi.js';
 
@@ -32,7 +32,6 @@ export function OrgTab() {
   const { data: currencies = [] } = useQuery({ queryKey: ['admin', 'currencies'], queryFn: adminApi.currencies });
   const { data: depts = [] } = useQuery({ queryKey: ['admin', 'departments'], queryFn: adminApi.departments });
   const { data: ccs = [] } = useQuery({ queryKey: ['admin', 'cost-centers'], queryFn: adminApi.costCenters });
-  const { data: people = [] } = useDirectory();
   const [edit, setEdit] = useState(null);
   const save = useMutation({
     mutationFn: () => (edit.kind === 'dept' ? adminApi.saveDepartment(edit.id, { code: edit.code, name: edit.name, headId: edit.headId || null }) : adminApi.saveCostCenter(edit.id, { code: edit.code, name: edit.name, active: edit.active ?? true })),
@@ -72,7 +71,7 @@ export function OrgTab() {
           <div className="space-y-4">
             <Field label="Code"><input className="input font-mono" value={edit.code} onChange={(e) => setEdit({ ...edit, code: e.target.value.toUpperCase() })} /></Field>
             <Field label="Name"><input className="input" value={edit.name} onChange={(e) => setEdit({ ...edit, name: e.target.value })} /></Field>
-            {edit.kind === 'dept' && <Field label="Department head" hint="Used by 'Department head' approval levels"><select className="input" value={edit.headId} onChange={(e) => setEdit({ ...edit, headId: e.target.value })}><option value="">None</option>{people.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select></Field>}
+            {edit.kind === 'dept' && <Field label="Department head" hint="Used by 'Department head' approval levels"><UserPicker value={edit.headId || null} onChange={(id) => setEdit({ ...edit, headId: id ?? '' })} ariaLabel="Department head" /></Field>}
           </div>
         )}
       </Modal>

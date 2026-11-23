@@ -4,14 +4,14 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { Plane, Plus, Search, Download, MapPin, Globe2, ArrowRight } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAppStore, hasRole } from '../../../app/store.js';
-import { PageHeader, Tabs, SkeletonRows, EmptyState } from '../../../shared/components/ui/primitives.jsx';
+import { PageHeader, Tabs, SkeletonRows, EmptyState, LoadMore } from '../../../shared/components/ui/primitives.jsx';
 import { StatusChip } from '../../../shared/components/ui/StatusChip.jsx';
 import { Avatar } from '../../../shared/components/ui/Avatar.jsx';
 import { FlagCount } from '../../../shared/components/PolicyFlags.jsx';
 import { useDebounce } from '../../../shared/hooks/index.js';
+import { usePaged } from '../../../shared/hooks/usePaged.js';
 import { money, date, nights } from '../../../shared/utils/format.js';
 import { list, item } from '../../../shared/lib/motion.js';
-import { useTravelList } from '../hooks/useTravel.js';
 import { travelApi } from '../api/travelApi.js';
 
 const TABS = [
@@ -31,7 +31,10 @@ export function TravelListPage() {
   const scope = params.get('scope') ?? 'mine';
   const navigate = useNavigate();
   const term = useDebounce(search);
-  const { data, isLoading, isFetching } = useTravelList({ status: status || undefined, scope, search: term || undefined, pageSize: 50 });
+  const listParams = { status: status || undefined, scope, search: term || undefined };
+  const paged = usePaged(['travel', 'list', listParams], (p) => travelApi.list({ ...listParams, ...p }));
+  const { isLoading, isFetching } = paged;
+  const data = { items: paged.items, counts: paged.counts };
   const canTeam = hasRole(user, 'MANAGER', 'FINANCE', 'ADMIN', 'AUDITOR');
   const counts = data?.counts ?? {};
   const set = (k, v) => {
@@ -135,6 +138,7 @@ export function TravelListPage() {
                 ))}
               </AnimatePresence>
             </motion.ul>
+            <LoadMore shown={paged.items.length} total={paged.total} hasMore={paged.hasNextPage} loading={paged.isFetchingNextPage} onMore={() => paged.fetchNextPage()} noun="requests" />
           </div>
         )}
       </div>

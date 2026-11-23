@@ -1,6 +1,6 @@
 import * as svc from './users.service.js';
 
-export const directory = async (_req, res) => res.json(await svc.directory());
+export const directory = async (req, res) => res.json(await svc.directory(req.query));
 export const myDelegations = async (req, res) => res.json(await svc.myDelegations(req.user.id));
 export const createDelegation = async (req, res) => res.status(201).json(await svc.createDelegation(req.user, req.body));
 export const revokeDelegation = async (req, res) => res.json(await svc.revokeDelegation(req.user, req.params.id));

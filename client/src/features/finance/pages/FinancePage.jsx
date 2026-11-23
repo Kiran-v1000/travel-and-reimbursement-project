@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { usePaged } from '../../../shared/hooks/usePaged.js';
 import { motion } from 'framer-motion';
 import { Landmark, ArrowRight, CalendarClock, Wallet, ShieldAlert, Clock } from 'lucide-react';
-import { PageHeader, Tabs, SkeletonRows, EmptyState, AnimatedNumber } from '../../../shared/components/ui/primitives.jsx';
+import { PageHeader, Tabs, SkeletonRows, EmptyState, AnimatedNumber, LoadMore } from '../../../shared/components/ui/primitives.jsx';
 import { Avatar } from '../../../shared/components/ui/Avatar.jsx';
 import { StatusChip } from '../../../shared/components/ui/StatusChip.jsx';
 import { FlagCount } from '../../../shared/components/PolicyFlags.jsx';
@@ -16,16 +16,15 @@ export function FinancePage() {
   const navigate = useNavigate();
   const [tab, setTab] = useState('queue');
   const [flagged, setFlagged] = useState(false);
-  const queue = useQuery({ queryKey: ['finance', 'queue', flagged], queryFn: () => financeApi.queue({ flagged: flagged || undefined }) });
-  const scheduled = useQuery({ queryKey: ['finance', 'payments', 'SCHEDULED'], queryFn: () => financeApi.payments('SCHEDULED') });
-  const paid = useQuery({ queryKey: ['finance', 'payments', 'PAID'], queryFn: () => financeApi.payments('PAID') });
-  const sum = (rows = []) => rows.reduce((a, r) => a + Number(r.totalBase), 0);
+  const queue = usePaged(['finance', 'queue', flagged], (p) => financeApi.queue({ flagged: flagged || undefined, ...p }));
+  const scheduled = usePaged(['finance', 'payments', 'SCHEDULED'], (p) => financeApi.payments('SCHEDULED', p));
+  const paid = usePaged(['finance', 'payments', 'PAID'], (p) => financeApi.payments('PAID', p));
   const rows = tab === 'queue' ? queue : tab === 'scheduled' ? scheduled : paid;
 
   const kpis = [
-    { label: 'To review', count: queue.data?.length ?? 0, amount: sum(queue.data), icon: Landmark, tone: 'text-brand bg-brand/10' },
-    { label: 'Scheduled', count: scheduled.data?.length ?? 0, amount: sum(scheduled.data), icon: CalendarClock, tone: 'text-info bg-info/10' },
-    { label: 'Paid (recent)', count: paid.data?.length ?? 0, amount: sum(paid.data), icon: Wallet, tone: 'text-ok bg-ok/10' },
+    { label: 'To review', count: queue.total, amount: queue.amount, icon: Landmark, tone: 'text-brand bg-brand/10' },
+    { label: 'Scheduled', count: scheduled.total, amount: scheduled.amount, icon: CalendarClock, tone: 'text-info bg-info/10' },
+    { label: 'Paid (all time)', count: paid.total, amount: paid.amount, icon: Wallet, tone: 'text-ok bg-ok/10' },
   ];
 
   return (
@@ -46,7 +45,7 @@ export function FinancePage() {
 
       <div className="card overflow-hidden">
         <div className="flex flex-col gap-3 border-b border-line p-4 sm:flex-row sm:items-center">
-          <Tabs id="fin-tabs" value={tab} onChange={setTab} tabs={[{ value: 'queue', label: 'Review queue', count: queue.data?.length }, { value: 'scheduled', label: 'Scheduled', count: scheduled.data?.length }, { value: 'paid', label: 'Paid' }]} />
+          <Tabs id="fin-tabs" value={tab} onChange={setTab} tabs={[{ value: 'queue', label: 'Review queue', count: queue.total }, { value: 'scheduled', label: 'Scheduled', count: scheduled.total }, { value: 'paid', label: 'Paid' }]} />
           {tab === 'queue' && (
             <label className="flex items-center gap-2 text-[12.5px] sm:ml-auto">
               <input type="checkbox" className="h-4 w-4 accent-[rgb(var(--brand))]" checked={flagged} onChange={(e) => setFlagged(e.target.checked)} />
@@ -56,11 +55,11 @@ export function FinancePage() {
         </div>
         {rows.isLoading ? (
           <SkeletonRows />
-        ) : !rows.data?.length ? (
+        ) : !rows.items.length ? (
           <EmptyState icon={tab === 'queue' ? Landmark : Wallet} title={tab === 'queue' ? 'Queue is clear' : 'Nothing here yet'} body={tab === 'queue' ? 'Reports appear here once all approvers sign off.' : undefined} />
         ) : (
           <motion.ul variants={list} initial="initial" animate="animate">
-            {rows.data.map((r) => (
+            {rows.items.map((r) => (
               <motion.li key={r.id} variants={item}>
                 <button type="button" onClick={() => navigate(`/expenses/${r.id}`)} className="table-row group grid w-full grid-cols-1 gap-2 border-b border-line/60 px-5 py-3.5 text-left last:border-0 md:grid-cols-[1.6fr_1fr_0.8fr_0.9fr_24px] md:items-center md:gap-4">
                   <div className="flex min-w-0 items-center gap-3">
@@ -90,6 +89,9 @@ export function FinancePage() {
               </motion.li>
             ))}
           </motion.ul>
+        )}
+        {!rows.isLoading && (
+          <LoadMore shown={rows.items.length} total={rows.total} hasMore={rows.hasNextPage} loading={rows.isFetchingNextPage} onMore={() => rows.fetchNextPage()} noun="reports" />
         )}
       </div>
     </div>

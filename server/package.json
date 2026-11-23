@@ -16,7 +16,10 @@
     "db:seed": "node src/db/seeds/seed.js",
     "db:reset": "prisma migrate reset --force",
     "test": "node --test \"src/**/*.test.js\"",
-    "test:e2e": "node --test \"tests/**/*.test.js\""
+    "test:e2e": "node --test \"tests/**/*.test.js\"",
+    "db:seed:scale": "node src/db/seeds/scale.js",
+    "load:test": "node tests/load/load-test.js",
+    "start:cluster": "pm2 start ecosystem.config.cjs --env production"
   },
   "prisma": {
     "schema": "src/db/schema.prisma",
@@ -41,6 +44,7 @@
     "zod": "^3.23.8"
   },
   "devDependencies": {
+    "autocannon": "^7.15.0",
     "prisma": "^5.22.0"
   }
 }

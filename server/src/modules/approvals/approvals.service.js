@@ -1,6 +1,6 @@
 import { prisma } from '../../db/pool.js';
 import { badRequest, forbidden, notFound, conflict } from '../../shared/errors/AppError.js';
-import { getSettings } from '../../shared/utils/index.js';
+import { getSettings, attachLineCounts } from '../../shared/utils/index.js';
 import { audit } from '../audit/audit.service.js';
 import { notify } from '../notifications/notifications.service.js';
 import { activateNextLevel, delegatorsFor } from './approvals.engine.js';
@@ -19,7 +19,6 @@ const stepInclude = {
     select: {
       id: true, code: true, title: true, totalBase: true, status: true, round: true, policyFlags: true, submittedAt: true,
       employee: { select: { id: true, name: true, title: true, department: { select: { name: true } } } },
-      _count: { select: { lines: true } },
     },
   },
 };
@@ -43,7 +42,9 @@ export async function inbox(user) {
   for (const d of delegations) {
     or.push({ approverId: d.delegatorId, ...(d.scope === 'ALL' ? {} : { entityType: d.scope }) });
   }
-  const steps = await prisma.approvalStep.findMany({ where: { status: 'PENDING', OR: or }, include: stepInclude, orderBy: { activatedAt: 'asc' } });
+  // Oldest first, capped so a heavily delegated approver still gets a fast inbox.
+  const steps = await prisma.approvalStep.findMany({ where: { status: 'PENDING', OR: or }, include: stepInclude, orderBy: { activatedAt: 'asc' }, take: 300 });
+  await attachLineCounts(steps, (st) => st.expenseReport);
   return steps
     .map(shapeStep)
     .filter((s) => s.entity && s.entity.requester.id !== user.id)
@@ -57,6 +58,7 @@ export async function history(user) {
     orderBy: { actedAt: 'desc' },
     take: 100,
   });
+  await attachLineCounts(steps, (st) => st.expenseReport);
   return steps.map(shapeStep);
 }
 
@@ -171,37 +173,64 @@ export const timeline = (where) =>
     orderBy: [{ round: 'asc' }, { level: 'asc' }, { createdAt: 'asc' }],
   });
 
-/** Reassign overdue steps to the approver's manager (or fallback). Runs from the cron job. */
+/**
+ * Reassign overdue steps to the approver's manager (or fallback). Runs from the cron job on
+ * every API instance: each batch is claimed with FOR UPDATE SKIP LOCKED and its deadline moved
+ * inside the same transaction, so no step is ever escalated twice.
+ */
 export async function escalateOverdue() {
   const settings = await getSettings();
   if (settings.escalationEnabled === false) return 0;
-  const overdue = await prisma.approvalStep.findMany({
-    where: { status: 'PENDING', dueAt: { lt: new Date() } },
-    include: { approver: true, travelRequest: true, expenseReport: true },
-  });
   const timeoutHours = Number(settings.approvalTimeoutHours ?? 48);
+  const nextDue = () => new Date(Date.now() + timeoutHours * 3600 * 1000);
   let count = 0;
-  for (const s of overdue) {
-    const entity = s.travelRequest ?? s.expenseReport;
-    const requesterId = s.travelRequest?.requesterId ?? s.expenseReport?.employeeId;
-    let target = s.approver.managerId ? await prisma.user.findUnique({ where: { id: s.approver.managerId } }) : null;
-    if (!target?.active || target.id === requesterId) {
-      target = settings.fallbackApproverId ? await prisma.user.findUnique({ where: { id: settings.fallbackApproverId } }) : null;
+
+  for (let batch = 0; batch < 100; batch++) {
+    const handled = await prisma.$transaction(async (tx) => {
+      const rows = await tx.$queryRaw`
+        SELECT id FROM "ApprovalStep" WHERE status = 'PENDING' AND "dueAt" < now()
+        ORDER BY "dueAt" LIMIT 100 FOR UPDATE SKIP LOCKED`;
+      if (!rows.length) return [];
+      const steps = await tx.approvalStep.findMany({
+        where: { id: { in: rows.map((r) => r.id) } },
+        include: { approver: true, travelRequest: true, expenseReport: true },
+      });
+      const out = [];
+      for (const s of steps) {
+        const entity = s.travelRequest ?? s.expenseReport;
+        const requesterId = s.travelRequest?.requesterId ?? s.expenseReport?.employeeId;
+        let target = s.approver.managerId ? await tx.user.findUnique({ where: { id: s.approver.managerId } }) : null;
+        if (!target?.active || target.id === requesterId) {
+          target = settings.fallbackApproverId ? await tx.user.findUnique({ where: { id: settings.fallbackApproverId } }) : null;
+        }
+        if (!target?.active || target.id === requesterId || target.id === s.approverId) {
+          // Nobody better to escalate to - extend the deadline and remind.
+          await tx.approvalStep.update({ where: { id: s.id }, data: { dueAt: nextDue() } });
+          out.push({ kind: 'remind', s, entity });
+          continue;
+        }
+        await tx.approvalStep.update({
+          where: { id: s.id },
+          data: { approverId: target.id, escalated: true, dueAt: nextDue(), resolution: `Escalated from ${s.approver.name} after ${timeoutHours}h without action` },
+        });
+        out.push({ kind: 'escalate', s, entity, target });
+      }
+      return out;
+    }, { timeout: 60_000 });
+
+    if (!handled.length) break;
+    // Side effects after commit.
+    for (const h of handled) {
+      const { s, entity } = h;
+      if (h.kind === 'remind') {
+        await notify(s.approverId, { type: 'REMINDER', title: `Reminder: ${entity.code} is overdue`, body: `${entity.title} has been waiting for your decision.`, link: '/approvals' });
+        continue;
+      }
+      await audit(null, 'approval.escalated', s.entityType, entity.id, { code: entity.code, from: s.approver.name, to: h.target.name, level: s.level });
+      await notify(h.target.id, { type: 'ACTION_REQUIRED', title: `Escalated to you: ${entity.code}`, body: `${entity.title} was escalated from ${s.approver.name}.`, link: '/approvals' });
+      await notify(s.approverId, { type: 'INFO', title: `${entity.code} was escalated`, body: `It was reassigned to ${h.target.name} after the approval timeout.`, link: '/approvals' });
+      count++;
     }
-    if (!target?.active || target.id === requesterId || target.id === s.approverId) {
-      // Nobody better to escalate to - extend the deadline and remind.
-      await prisma.approvalStep.update({ where: { id: s.id }, data: { dueAt: new Date(Date.now() + timeoutHours * 3600 * 1000) } });
-      await notify(s.approverId, { type: 'REMINDER', title: `Reminder: ${entity.code} is overdue`, body: `${entity.title} has been waiting for your decision.`, link: '/approvals' });
-      continue;
-    }
-    await prisma.approvalStep.update({
-      where: { id: s.id },
-      data: { approverId: target.id, escalated: true, dueAt: new Date(Date.now() + timeoutHours * 3600 * 1000), resolution: `Escalated from ${s.approver.name} after ${timeoutHours}h without action` },
-    });
-    await audit(null, 'approval.escalated', s.entityType, entity.id, { code: entity.code, from: s.approver.name, to: target.name, level: s.level });
-    await notify(target.id, { type: 'ACTION_REQUIRED', title: `Escalated to you: ${entity.code}`, body: `${entity.title} was escalated from ${s.approver.name}.`, link: '/approvals' });
-    await notify(s.approverId, { type: 'INFO', title: `${entity.code} was escalated`, body: `It was reassigned to ${target.name} after the approval timeout.`, link: '/approvals' });
-    count++;
   }
   return count;
 }

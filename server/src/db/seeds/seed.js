@@ -18,6 +18,7 @@ import * as approvals from '../../modules/approvals/approvals.service.js';
 import * as finance from '../../modules/finance/finance.service.js';
 import { createDelegation } from '../../modules/users/users.service.js';
 import { audit } from '../../modules/audit/audit.service.js';
+import { rebuildOrgTree } from '../../shared/utils/orgTree.js';
 
 const PASSWORD = 'Voyage@123';
 const ADMIN_EMAIL = process.env.SEED_ADMIN_EMAIL || 'admin@utthunga.com';
@@ -109,6 +110,7 @@ async function main() {
   await prisma.department.update({ where: { id: dept.SALES.id }, data: { headId: arjun.id } });
   await prisma.department.update({ where: { id: dept.FIN.id }, data: { headId: meera.id } });
   await prisma.department.update({ where: { id: dept.OPS.id }, data: { headId: divya.id } });
+  await rebuildOrgTree();
 
   const settings = {
     baseCurrency: 'INR', leadDaysDomestic: 7, leadDaysInternational: 21, maxTripDays: 30,

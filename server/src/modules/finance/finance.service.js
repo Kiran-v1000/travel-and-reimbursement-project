@@ -1,6 +1,6 @@
 import { prisma } from '../../db/pool.js';
 import { badRequest, notFound, conflict } from '../../shared/errors/AppError.js';
-import { num, getSetting } from '../../shared/utils/index.js';
+import { num, getSetting, paging, attachLineCounts } from '../../shared/utils/index.js';
 import { audit } from '../audit/audit.service.js';
 import { notify } from '../notifications/notifications.service.js';
 import { recalc } from '../expenses/expenses.service.js';
@@ -11,18 +11,33 @@ const queueSelect = {
   costCenter: { select: { code: true, name: true } },
   travelRequest: { select: { code: true } },
   payment: true,
-  _count: { select: { lines: true } },
 };
 
+/** Paginated (oldest first) - the queue can hold thousands of reports at month end. */
 export async function queue(q) {
+  const { skip, take, page, pageSize } = paging(q);
   const where = { status: 'FINANCE_REVIEW' };
   if (q.flagged === 'true') where.NOT = { policyFlags: { equals: [] } };
-  return prisma.expenseReport.findMany({ where, select: queueSelect, orderBy: { approvedAt: 'asc' } });
+  const [items, total, sum] = await Promise.all([
+    prisma.expenseReport.findMany({ where, select: queueSelect, orderBy: { approvedAt: 'asc' }, skip, take }),
+    prisma.expenseReport.count({ where }),
+    prisma.expenseReport.aggregate({ where, _sum: { totalBase: true } }),
+  ]);
+  await attachLineCounts(items);
+  return { items, total, page, pageSize, amount: num(sum._sum.totalBase) };
 }
 
 export async function payments(q) {
-  const where = { status: { in: (q.status || 'SCHEDULED,PAID').split(',') } };
-  return prisma.expenseReport.findMany({ where, select: queueSelect, orderBy: { updatedAt: 'desc' }, take: 200 });
+  const { skip, take, page, pageSize } = paging(q);
+  const allowed = ['SCHEDULED', 'PAID'];
+  const where = { status: { in: (q.status || 'SCHEDULED,PAID').split(',').filter((s) => allowed.includes(s)) } };
+  const [items, total, sum] = await Promise.all([
+    prisma.expenseReport.findMany({ where, select: queueSelect, orderBy: { updatedAt: 'desc' }, skip, take }),
+    prisma.expenseReport.count({ where }),
+    prisma.expenseReport.aggregate({ where, _sum: { totalBase: true } }),
+  ]);
+  await attachLineCounts(items);
+  return { items, total, page, pageSize, amount: num(sum._sum.totalBase) };
 }
 
 async function loadForFinance(id) {

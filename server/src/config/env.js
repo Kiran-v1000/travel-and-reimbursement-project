@@ -39,6 +39,13 @@ const schema = z.object({
   SMTP_PASS: z.string().optional(),
   MAIL_FROM: z.string().default('Voyage T&E <no-reply@company.local>'),
   ESCALATION_CRON: z.string().default('*/15 * * * *'),
+  // Requests per minute per signed-in session (per API instance)
+  API_RATE_LIMIT_PER_MIN: z.coerce.number().int().positive().default(300),
+  // Log every request (off by default in production; nginx access logs cover it)
+  REQUEST_LOGGING: z
+    .string()
+    .optional()
+    .transform((v) => v !== 'false'),
 });
 
 const parsed = schema.safeParse(process.env);

@@ -4,14 +4,14 @@ import { motion } from 'framer-motion';
 import { Receipt, Plus, Search, Download, ArrowRight, Plane, CalendarClock, Wallet } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAppStore, hasRole } from '../../../app/store.js';
-import { PageHeader, Tabs, SkeletonRows, EmptyState } from '../../../shared/components/ui/primitives.jsx';
+import { PageHeader, Tabs, SkeletonRows, EmptyState, LoadMore } from '../../../shared/components/ui/primitives.jsx';
 import { StatusChip } from '../../../shared/components/ui/StatusChip.jsx';
 import { Avatar } from '../../../shared/components/ui/Avatar.jsx';
 import { FlagCount } from '../../../shared/components/PolicyFlags.jsx';
 import { useDebounce } from '../../../shared/hooks/index.js';
+import { usePaged } from '../../../shared/hooks/usePaged.js';
 import { money, date, shortDate } from '../../../shared/utils/format.js';
 import { list, item } from '../../../shared/lib/motion.js';
-import { useExpenseList } from '../hooks/useExpenses.js';
 import { expensesApi } from '../api/expensesApi.js';
 
 const TABS = [
@@ -32,7 +32,10 @@ export function ExpenseListPage() {
   const scope = params.get('scope') ?? 'mine';
   const term = useDebounce(search);
   const navigate = useNavigate();
-  const { data, isLoading, isFetching } = useExpenseList({ status: status || undefined, scope, search: term || undefined, pageSize: 50 });
+  const listParams = { status: status || undefined, scope, search: term || undefined };
+  const paged = usePaged(['expenses', 'list', listParams], (p) => expensesApi.list({ ...listParams, ...p }));
+  const { isLoading, isFetching } = paged;
+  const data = { items: paged.items, counts: paged.counts };
   const counts = data?.counts ?? {};
   const canTeam = hasRole(user, 'MANAGER', 'FINANCE', 'ADMIN', 'AUDITOR');
   const set = (k, v) => {
@@ -131,6 +134,7 @@ export function ExpenseListPage() {
             ))}
           </motion.ul>
         )}
+        {!isLoading && <LoadMore shown={paged.items.length} total={paged.total} hasMore={paged.hasNextPage} loading={paged.isFetchingNextPage} onMore={() => paged.fetchNextPage()} noun="reports" />}
       </div>
     </div>
   );

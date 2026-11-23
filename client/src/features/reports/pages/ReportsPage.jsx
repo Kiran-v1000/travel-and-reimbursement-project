@@ -150,7 +150,7 @@ export function ReportsPage() {
           </div>
 
           <div className="grid gap-6 xl:grid-cols-2">
-            <Panel title="Open approvals by age" action={<button type="button" className="btn-ghost h-8 text-[12px]" onClick={() => exp('approvals')}><Download className="h-3.5 w-3.5" /> CSV</button>}>
+            <Panel title={a.openApprovalsTruncated ? `Open approvals - oldest ${a.openApprovals.length} of ${a.kpis.openApprovals.toLocaleString('en-IN')}` : 'Open approvals by age'} action={<button type="button" className="btn-ghost h-8 text-[12px]" onClick={() => exp('approvals')}><Download className="h-3.5 w-3.5" /> CSV</button>}>
               {!a.openApprovals.length ? <p className="text-[12.5px] text-muted">No open approvals.</p> : (
                 <div className="overflow-x-auto">
                   <table className="w-full text-[12.5px]">

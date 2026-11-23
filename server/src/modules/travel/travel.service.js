@@ -2,6 +2,7 @@ import { prisma } from '../../db/pool.js';
 import { badRequest, forbidden, notFound, conflict, AppError } from '../../shared/errors/AppError.js';
 import { nextCode, toBase, round2, getSetting, num, paging, toCsv } from '../../shared/utils/index.js';
 import { assertCanView, visibilityWhere } from '../../shared/utils/access.js';
+import { memo, totalFromCounts } from '../../shared/utils/cache.js';
 import { audit } from '../audit/audit.service.js';
 import { notify } from '../notifications/notifications.service.js';
 import { checkTravel, hasViolation } from '../policy/policy.service.js';
@@ -41,12 +42,17 @@ export async function list(user, q) {
       ],
     });
   }
-  const [items, total, counts] = await Promise.all([
+  // Tab counts double as the total; cached for 30s on team scopes (see expenses.service).
+  const countsFn = async () =>
+    Object.fromEntries(
+      (await prisma.travelRequest.groupBy({ by: ['status'], where: { AND: where.AND.filter((c) => !c.status) }, _count: true })).map((c) => [c.status, c._count]),
+    );
+  const mine = q.scope === 'mine' || !q.scope;
+  const [items, counts] = await Promise.all([
     prisma.travelRequest.findMany({ where, select: listSelect, orderBy: { updatedAt: 'desc' }, skip, take }),
-    prisma.travelRequest.count({ where }),
-    prisma.travelRequest.groupBy({ by: ['status'], where: { AND: where.AND.filter((c) => !c.status) }, _count: true }),
+    mine ? countsFn() : memo('travel-counts', `${user.id}|${q.search ?? ''}`, 30_000, countsFn),
   ]);
-  return { items, total, page, pageSize, counts: Object.fromEntries(counts.map((c) => [c.status, c._count])) };
+  return { items, total: totalFromCounts(counts, q.status), page, pageSize, counts };
 }
 
 export async function get(user, id) {

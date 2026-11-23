@@ -1,12 +1,13 @@
 import { useState } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Search, Plus, Pencil } from 'lucide-react';
 import { toast } from 'sonner';
 import clsx from 'clsx';
 import { Modal } from '../../../shared/components/ui/Modal.jsx';
 import { Field, Spinner, SkeletonRows } from '../../../shared/components/ui/primitives.jsx';
 import { Avatar } from '../../../shared/components/ui/Avatar.jsx';
-import { useDebounce, useReference, useDirectory } from '../../../shared/hooks/index.js';
+import { useDebounce, useReference } from '../../../shared/hooks/index.js';
+import { UserPicker } from '../../../shared/components/UserPicker.jsx';
 import { ROLE_LABEL } from '../../../shared/utils/status.js';
 import { ago } from '../../../shared/utils/format.js';
 import { adminApi } from '../api/adminApi.js';
@@ -16,10 +17,16 @@ const blank = { employeeId: '', name: '', email: '', role: 'EMPLOYEE', title: ''
 export function PeopleTab() {
   const qc = useQueryClient();
   const { data: ref } = useReference();
-  const { data: directory = [] } = useDirectory();
   const [search, setSearch] = useState('');
   const term = useDebounce(search);
-  const { data: users, isLoading } = useQuery({ queryKey: ['admin', 'users', term], queryFn: () => adminApi.users({ search: term || undefined }) });
+  const { data, isLoading, fetchNextPage, hasNextPage, isFetchingNextPage } = useInfiniteQuery({
+    queryKey: ['admin', 'users', term],
+    queryFn: ({ pageParam }) => adminApi.users({ search: term || undefined, page: pageParam, pageSize: 50 }),
+    initialPageParam: 1,
+    getNextPageParam: (last) => (last.page * last.pageSize < last.total ? last.page + 1 : undefined),
+  });
+  const users = data?.pages.flatMap((p) => p.items) ?? [];
+  const total = data?.pages[0]?.total ?? 0;
   const [edit, setEdit] = useState(null);
   const [form, setForm] = useState(blank);
 
@@ -63,6 +70,16 @@ export function PeopleTab() {
           ))}
         </ul>
       )}
+      {!isLoading && (
+        <div className="flex items-center justify-between border-t border-line px-5 py-3 text-[12.5px] text-muted">
+          <span className="num">Showing {users.length.toLocaleString('en-IN')} of {total.toLocaleString('en-IN')} people</span>
+          {hasNextPage && (
+            <button type="button" className="btn-secondary h-8" onClick={() => fetchNextPage()} disabled={isFetchingNextPage}>
+              {isFetchingNextPage && <Spinner />} Load more
+            </button>
+          )}
+        </div>
+      )}
       <Modal open={!!edit} onClose={() => setEdit(null)} size="lg" title={edit === 'new' ? 'Add person' : `Edit ${edit?.name ?? ''}`}
         footer={<><button type="button" className="btn-secondary" onClick={() => setEdit(null)}>Cancel</button><button type="button" className="btn-primary" disabled={save.isPending} onClick={() => save.mutate()}>{save.isPending && <Spinner />} Save</button></>}>
         <div className="grid gap-4 sm:grid-cols-2">
@@ -74,7 +91,7 @@ export function PeopleTab() {
           <Field label="Location"><input className="input" value={form.location} onChange={set('location')} /></Field>
           <Field label="Department"><select className="input" value={form.departmentId} onChange={set('departmentId')}><option value="">—</option>{ref?.departments?.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}</select></Field>
           <Field label="Cost center"><select className="input" value={form.costCenterId} onChange={set('costCenterId')}><option value="">—</option>{ref?.costCenters?.map((c) => <option key={c.id} value={c.id}>{c.code} · {c.name}</option>)}</select></Field>
-          <Field label="Reports to" hint="Drives the approval hierarchy"><select className="input" value={form.managerId} onChange={set('managerId')}><option value="">No manager</option>{directory.filter((p) => p.id !== edit?.id).map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select></Field>
+          <Field label="Reports to" hint="Drives the approval hierarchy"><UserPicker value={form.managerId || null} excludeId={edit?.id} onChange={(id) => setForm((f) => ({ ...f, managerId: id ?? '' }))} placeholder="No manager - search to assign" ariaLabel="Reports to" /></Field>
           <Field label={edit === 'new' ? 'Initial password' : 'Reset password'} hint="At least 8 characters; leave blank to keep"><input className="input" type="password" autoComplete="new-password" value={form.password} onChange={set('password')} /></Field>
           <label className="flex items-center gap-2 text-[13px] sm:col-span-2"><input type="checkbox" className="h-4 w-4 accent-[rgb(var(--brand))]" checked={form.active} onChange={set('active')} /> Active (inactive approvers are routed to the fallback approver)</label>
         </div>

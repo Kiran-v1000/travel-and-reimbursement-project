@@ -46,6 +46,22 @@ export function paging(q) {
   return { skip: (page - 1) * pageSize, take: pageSize, page, pageSize };
 }
 
+/**
+ * Add `_count.lines` to expense reports by counting only the given page of reports.
+ * (Prisma's `_count` in a select joins a GROUP BY over the whole lines table - slow at scale.)
+ */
+export async function attachLineCounts(reports, getReport = (r) => r) {
+  const ids = reports.map(getReport).filter(Boolean).map((r) => r.id);
+  if (!ids.length) return reports;
+  const rows = await prisma.expenseLine.groupBy({ by: ['reportId'], where: { reportId: { in: ids } }, _count: { _all: true } });
+  const counts = Object.fromEntries(rows.map((r) => [r.reportId, r._count._all]));
+  reports.forEach((r) => {
+    const rep = getReport(r);
+    if (rep) rep._count = { lines: counts[rep.id] ?? 0 };
+  });
+  return reports;
+}
+
 export function toCsv(rows, columns) {
   const esc = (v) => {
     if (v == null) return '';

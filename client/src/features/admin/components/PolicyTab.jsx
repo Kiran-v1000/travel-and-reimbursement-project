@@ -4,7 +4,7 @@ import { Save, Pencil, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import { Field, Spinner, Skeleton } from '../../../shared/components/ui/primitives.jsx';
 import { Modal } from '../../../shared/components/ui/Modal.jsx';
-import { useDirectory } from '../../../shared/hooks/index.js';
+import { UserPicker } from '../../../shared/components/UserPicker.jsx';
 import { money } from '../../../shared/utils/format.js';
 import { adminApi } from '../api/adminApi.js';
 
@@ -18,7 +18,6 @@ export function PolicyTab() {
   const qc = useQueryClient();
   const { data: settings, isLoading } = useQuery({ queryKey: ['admin', 'settings'], queryFn: adminApi.settings });
   const { data: cats = [] } = useQuery({ queryKey: ['admin', 'categories'], queryFn: adminApi.categories });
-  const { data: people = [] } = useDirectory();
   const [s, setS] = useState(null);
   const [cat, setCat] = useState(null);
   useEffect(() => {
@@ -54,7 +53,7 @@ export function PolicyTab() {
         </div>
         <div className="mt-5 grid gap-4 border-t border-line pt-5 sm:grid-cols-2 xl:grid-cols-4">
           <Field label="Fallback approver" hint="Used when an approver is missing or inactive">
-            <select className="input" value={s.fallbackApproverId ?? ''} onChange={(e) => setS({ ...s, fallbackApproverId: e.target.value || null })}><option value="">First administrator</option>{people.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select>
+            <UserPicker value={s.fallbackApproverId ?? null} onChange={(id) => setS({ ...s, fallbackApproverId: id })} placeholder="First administrator (default)" ariaLabel="Fallback approver" />
           </Field>
           <Field label="After a return, resubmission…">
             <select className="input" value={s.resubmitRule} onChange={(e) => setS({ ...s, resubmitRule: e.target.value })}><option value="RESTART">Restarts the full route</option><option value="RETURNING_LEVEL">Resumes at the level that returned it</option></select>
