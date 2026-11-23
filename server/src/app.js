@@ -16,6 +16,7 @@ import expenseRoutes from './modules/expenses/expenses.routes.js';
 import approvalRoutes from './modules/approvals/approvals.routes.js';
 import financeRoutes from './modules/finance/finance.routes.js';
 import complianceRoutes from './modules/compliance/compliance.routes.js';
+import orgRoutes from './modules/org/org.routes.js';
 import adminRoutes from './modules/admin/admin.routes.js';
 import attachmentRoutes from './modules/attachments/attachments.routes.js';
 import notificationRoutes from './modules/notifications/notifications.routes.js';
@@ -53,6 +54,7 @@ export function createApp() {
   app.use('/api/approvals', approvalRoutes);
   app.use('/api/finance', financeRoutes);
   app.use('/api/compliance', complianceRoutes);
+  app.use('/api/org', orgRoutes);
   app.use('/api/admin', adminRoutes);
   app.use('/api/attachments', attachmentRoutes);
   app.use('/api/notifications', notificationRoutes);

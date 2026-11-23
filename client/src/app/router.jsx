@@ -18,6 +18,7 @@ const FinancePage = lazy(() => import('../features/finance/index.js').then((m) =
 const ReportsPage = lazy(() => import('../features/reports/index.js').then((m) => ({ default: m.ReportsPage })));
 const AdminPage = lazy(() => import('../features/admin/index.js').then((m) => ({ default: m.AdminPage })));
 const AuditPage = lazy(() => import('../features/audit/index.js').then((m) => ({ default: m.AuditPage })));
+const OrgChartPage = lazy(() => import('../features/org/index.js').then((m) => ({ default: m.OrgChartPage })));
 const CompliancePage = lazy(() => import('../features/compliance/index.js').then((m) => ({ default: m.CompliancePage })));
 const ProfilePage = lazy(() => import('../features/profile/index.js').then((m) => ({ default: m.ProfilePage })));
 
@@ -77,6 +78,7 @@ function Inner() {
         <Route path="expenses/:id" element={<ExpenseDetailPage />} />
         <Route path="approvals" element={<ApprovalsPage />} />
         <Route path="profile" element={<ProfilePage />} />
+        <Route path="org" element={<OrgChartPage />} />
         <Route path="finance" element={<Guard roles={['FINANCE', 'ADMIN']}><FinancePage /></Guard>} />
         <Route path="reports" element={<Guard roles={['MANAGER', 'FINANCE', 'ADMIN', 'AUDITOR']}><ReportsPage /></Guard>} />
         <Route path="compliance" element={<Guard roles={['ADMIN', 'FINANCE', 'AUDITOR']}><CompliancePage /></Guard>} />
