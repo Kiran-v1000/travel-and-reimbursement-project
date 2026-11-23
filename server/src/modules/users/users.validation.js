@@ -19,6 +19,14 @@ const userBase = {
 export const createSchema = z.object(userBase);
 export const updateSchema = z.object(userBase).partial();
 
+// Multipart form fields arrive as strings.
+const flag = z.preprocess((v) => v === true || v === 'true' || v === 'on' || v === '1', z.boolean());
+export const importOptionsSchema = z.object({
+  mode: z.enum(['VALIDATE', 'APPLY']).default('VALIDATE'),
+  createMissing: flag.default(false),
+  deactivateMissing: flag.default(false),
+});
+
 export const delegationSchema = z
   .object({
     delegateId: z.string().min(1, 'Choose a delegate'),

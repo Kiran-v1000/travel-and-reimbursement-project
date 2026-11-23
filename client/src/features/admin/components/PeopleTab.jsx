@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Search, Plus, Pencil } from 'lucide-react';
+import { Search, Plus, Pencil, FileUp } from 'lucide-react';
+import { ImportPeopleDialog } from './ImportPeopleDialog.jsx';
 import { toast } from 'sonner';
 import clsx from 'clsx';
 import { Modal } from '../../../shared/components/ui/Modal.jsx';
@@ -29,6 +30,7 @@ export function PeopleTab() {
   const total = data?.pages[0]?.total ?? 0;
   const [edit, setEdit] = useState(null);
   const [form, setForm] = useState(blank);
+  const [importing, setImporting] = useState(false);
 
   const open = (u) => {
     setForm(u ? { ...blank, ...u, departmentId: u.department?.id ?? '', costCenterId: u.costCenter?.id ?? '', managerId: u.manager?.id ?? '', title: u.title ?? '', location: u.location ?? '', password: '' } : blank);
@@ -51,8 +53,12 @@ export function PeopleTab() {
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
           <input className="input h-9 pl-9" placeholder="Search people…" value={search} onChange={(e) => setSearch(e.target.value)} aria-label="Search people" />
         </div>
-        <button type="button" className="btn-primary" onClick={() => open(null)}><Plus className="h-4 w-4" /> Add person</button>
+        <div className="flex gap-2">
+          <button type="button" className="btn-secondary" onClick={() => setImporting(true)}><FileUp className="h-4 w-4" /> Import CSV</button>
+          <button type="button" className="btn-primary" onClick={() => open(null)}><Plus className="h-4 w-4" /> Add person</button>
+        </div>
       </div>
+      <ImportPeopleDialog open={importing} onClose={() => setImporting(false)} />
       {isLoading ? <SkeletonRows /> : (
         <ul>
           {users.map((u) => (

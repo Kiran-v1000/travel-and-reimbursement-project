@@ -427,6 +427,24 @@ model AuditLog {
   @@index([createdAt])
 }
 
+/// Bulk HR import runs (CSV). Stored in the DB so any API worker can report progress.
+model ImportJob {
+  id          String    @id @default(cuid())
+  kind        String    @default("USERS")
+  mode        String // VALIDATE | APPLY
+  status      String    @default("RUNNING") // RUNNING | DONE | FAILED
+  fileName    String
+  totalRows   Int       @default(0)
+  processed   Int       @default(0)
+  summary     Json      @default("{}")
+  errors      Json      @default("[]")
+  createdById String
+  createdAt   DateTime  @default(now())
+  finishedAt  DateTime?
+
+  @@index([createdAt])
+}
+
 model Counter {
   key   String @id
   value Int    @default(0)

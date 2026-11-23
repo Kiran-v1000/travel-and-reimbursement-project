@@ -1,0 +1,10 @@
+employee_id,name,email,manager_email,department_code,department_name,cost_center_code,cost_center_name,role,title,location,active
+UT90001,Good Person,good.person@utthunga.com,asha@voyage.io,ENG,Engineering,CC-210,Engineering R&D,EMPLOYEE,Engineer,Bengaluru,true
+UT90002,,missing.name@utthunga.com,asha@voyage.io,ENG,,CC-210,,EMPLOYEE,Engineer,Pune,true
+UT90003,Bad Email,not-an-email,asha@voyage.io,ENG,,CC-210,,EMPLOYEE,Engineer,Pune,true
+UT90004,Ghost Manager,ghost.manager@utthunga.com,nobody@utthunga.com,ENG,,CC-210,,EMPLOYEE,Engineer,Pune,true
+UT90005,Loop A,loop.a@utthunga.com,loop.b@utthunga.com,ENG,,CC-210,,EMPLOYEE,Engineer,Pune,true
+UT90006,Loop B,loop.b@utthunga.com,loop.a@utthunga.com,ENG,,CC-210,,EMPLOYEE,Engineer,Pune,true
+UT90007,Wants Admin,wants.admin@utthunga.com,asha@voyage.io,OPS,,CC-100,,ADMIN,Admin,Chennai,true
+UT90001,Duplicate Id,duplicate.id@utthunga.com,asha@voyage.io,ENG,,CC-210,,EMPLOYEE,Engineer,Pune,true
+UT90009,Unknown Dept,unknown.dept@utthunga.com,asha@voyage.io,MARS,Mars Office,CC-999,Mars,EMPLOYEE,Engineer,Pune,maybe

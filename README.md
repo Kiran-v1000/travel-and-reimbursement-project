@@ -64,6 +64,12 @@ Demo accounts (password `Voyage@123`): `rahul@` / `ananya@` / `priya@` (employee
 
 Tests: `npm test` (unit) and `npm run test:e2e` (needs a seeded database) in `server/`.
 
+## Bulk HR import (CSV)
+
+**Administration → People → Import CSV** loads or updates employees, reporting lines, departments and cost centers from an HR export. Each run has two steps: **Check**, which reports every problem by row and changes nothing, then **Import**, which runs in batches with a progress bar. People are matched by `employee_id`, and `manager_email` sets "reports to". Re-importing the same file changes nothing. Departments that have no head get their most senior member as head.
+
+Sample files are in [`samples/`](samples): `employees-10000.csv` is a 10,000-person functional hierarchy under the CEO, and `employees-with-errors.csv` shows the validation messages. Regenerate them with `node server/src/db/seeds/sample-employees.js [count]`.
+
 ## Built for 100,000 people
 
 The app is load-tested with 100,011 users and about 1.5 million records. Everyday screens answer in about 100 to 170 ms (median) with zero errors under load. See [docs/SCALING.md](docs/SCALING.md) for the results, the design and the production sizing.
