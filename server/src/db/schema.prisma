@@ -1,0 +1,408 @@
+// Travel & Reimbursement System - data model
+// Migrations live in ./migrations (versioned, never edited after apply).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  EMPLOYEE
+  MANAGER
+  FINANCE
+  ADMIN
+  AUDITOR
+}
+
+enum EntityType {
+  TRAVEL
+  EXPENSE
+}
+
+enum TravelStatus {
+  DRAFT
+  PENDING
+  RETURNED
+  APPROVED
+  REJECTED
+  WITHDRAWN
+}
+
+enum ExpenseStatus {
+  DRAFT
+  PENDING
+  RETURNED
+  FINANCE_REVIEW
+  SCHEDULED
+  PAID
+  REJECTED
+  WITHDRAWN
+}
+
+enum StepStatus {
+  WAITING
+  PENDING
+  APPROVED
+  REJECTED
+  RETURNED
+  SKIPPED
+  CANCELLED
+}
+
+enum TravelType {
+  DOMESTIC
+  INTERNATIONAL
+}
+
+enum DelegationScope {
+  ALL
+  TRAVEL
+  EXPENSE
+}
+
+enum PaymentStatus {
+  SCHEDULED
+  PAID
+  FAILED
+}
+
+model Department {
+  id        String       @id @default(cuid())
+  code      String       @unique
+  name      String
+  headId    String?
+  head      User?        @relation("DepartmentHead", fields: [headId], references: [id])
+  members   User[]       @relation("DepartmentMembers")
+  rules     ApprovalRule[]
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+}
+
+model CostCenter {
+  id        String          @id @default(cuid())
+  code      String          @unique
+  name      String
+  active    Boolean         @default(true)
+  users     User[]
+  travels   TravelRequest[]
+  expenses  ExpenseReport[]
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+}
+
+model User {
+  id               String          @id @default(cuid())
+  employeeId       String          @unique
+  name             String
+  email            String          @unique
+  passwordHash     String?
+  role             Role            @default(EMPLOYEE)
+  title            String?
+  location         String?
+  active           Boolean         @default(true)
+  departmentId     String?
+  department       Department?     @relation("DepartmentMembers", fields: [departmentId], references: [id])
+  costCenterId     String?
+  costCenter       CostCenter?     @relation(fields: [costCenterId], references: [id])
+  managerId        String?
+  manager          User?           @relation("Reports", fields: [managerId], references: [id])
+  reports          User[]          @relation("Reports")
+  headOf           Department[]    @relation("DepartmentHead")
+  lastLoginAt      DateTime?
+  travelRequests   TravelRequest[] @relation("Requester")
+  expenseReports   ExpenseReport[] @relation("Claimant")
+  approvalSteps    ApprovalStep[]  @relation("StepApprover")
+  actedSteps       ApprovalStep[]  @relation("StepActor")
+  delegationsGiven Delegation[]    @relation("Delegator")
+  delegationsTaken Delegation[]    @relation("Delegate")
+  notifications    Notification[]
+  payments         Payment[]
+  attachments      Attachment[]
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  @@index([managerId])
+  @@index([departmentId])
+}
+
+model Delegation {
+  id          String          @id @default(cuid())
+  delegatorId String
+  delegator   User            @relation("Delegator", fields: [delegatorId], references: [id])
+  delegateId  String
+  delegate    User            @relation("Delegate", fields: [delegateId], references: [id])
+  scope       DelegationScope @default(ALL)
+  startDate   DateTime
+  endDate     DateTime
+  reason      String?
+  revoked     Boolean         @default(false)
+  createdAt   DateTime        @default(now())
+
+  @@index([delegatorId])
+  @@index([delegateId])
+}
+
+/// levels: [{ label, approvers: [{ type: MANAGER|SKIP_MANAGER|DEPT_HEAD|ROLE|USER, role?, userId? }] }]
+/// Approvers inside one level act in parallel; levels act sequentially.
+model ApprovalRule {
+  id                 String      @id @default(cuid())
+  name               String
+  entityType         EntityType
+  priority           Int         @default(100)
+  minAmount          Decimal     @default(0) @db.Decimal(14, 2)
+  maxAmount          Decimal?    @db.Decimal(14, 2)
+  departmentId       String?
+  department         Department? @relation(fields: [departmentId], references: [id])
+  costCenterCode     String?
+  travelType         TravelType?
+  onPolicyException  Boolean     @default(false)
+  levels             Json
+  active             Boolean     @default(true)
+  version            Int         @default(1)
+  createdAt          DateTime    @default(now())
+  updatedAt          DateTime    @updatedAt
+}
+
+model TravelRequest {
+  id                 String          @id @default(cuid())
+  code               String          @unique
+  requesterId        String
+  requester          User            @relation("Requester", fields: [requesterId], references: [id])
+  title              String
+  purpose            String
+  travelType         TravelType      @default(DOMESTIC)
+  origin             String
+  destination        String
+  startDate          DateTime
+  endDate            DateTime
+  travelers          String[]
+  estTransport       Decimal         @default(0) @db.Decimal(14, 2)
+  estLodging         Decimal         @default(0) @db.Decimal(14, 2)
+  estMeals           Decimal         @default(0) @db.Decimal(14, 2)
+  estOther           Decimal         @default(0) @db.Decimal(14, 2)
+  currency           String          @default("INR")
+  estTotalBase       Decimal         @default(0) @db.Decimal(14, 2)
+  costCenterId       String?
+  costCenter         CostCenter?     @relation(fields: [costCenterId], references: [id])
+  projectCode        String?
+  notes              String?
+  policyFlags        Json            @default("[]")
+  exceptionReason    String?
+  status             TravelStatus    @default(DRAFT)
+  round              Int             @default(0)
+  ruleId             String?
+  ruleName           String?
+  ruleVersion        Int?
+  version            Int             @default(1)
+  submittedAt        DateTime?
+  decidedAt          DateTime?
+  steps              ApprovalStep[]
+  attachments        Attachment[]
+  expenseReports     ExpenseReport[]
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+
+  @@index([requesterId, status])
+}
+
+model ExpenseReport {
+  id               String          @id @default(cuid())
+  code             String          @unique
+  employeeId       String
+  employee         User            @relation("Claimant", fields: [employeeId], references: [id])
+  travelRequestId  String?
+  travelRequest    TravelRequest?  @relation(fields: [travelRequestId], references: [id])
+  title            String
+  purpose          String
+  costCenterId     String?
+  costCenter       CostCenter?     @relation(fields: [costCenterId], references: [id])
+  projectCode      String?
+  currency         String          @default("INR")
+  totalBase        Decimal         @default(0) @db.Decimal(14, 2)
+  policyFlags      Json            @default("[]")
+  exceptionReason  String?
+  status           ExpenseStatus   @default(DRAFT)
+  round            Int             @default(0)
+  ruleId           String?
+  ruleName         String?
+  ruleVersion      Int?
+  version          Int             @default(1)
+  submittedAt      DateTime?
+  approvedAt       DateTime?
+  financeNote      String?
+  lines            ExpenseLine[]
+  steps            ApprovalStep[]
+  payment          Payment?
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  @@index([employeeId, status])
+  @@index([status])
+}
+
+model ExpenseLine {
+  id            String        @id @default(cuid())
+  reportId      String
+  report        ExpenseReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  date          DateTime
+  categoryId    String
+  category      ExpenseCategory @relation(fields: [categoryId], references: [id])
+  merchant      String
+  description   String?
+  amount        Decimal       @db.Decimal(14, 2)
+  tax           Decimal       @default(0) @db.Decimal(14, 2)
+  currency      String        @default("INR")
+  fxRate        Decimal       @default(1) @db.Decimal(18, 8)
+  fxDate        DateTime      @default(now())
+  baseAmount    Decimal       @db.Decimal(14, 2)
+  paymentMethod String        @default("PERSONAL_CARD")
+  flags         Json          @default("[]")
+  attachments   Attachment[]
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  @@index([reportId])
+}
+
+model ExpenseCategory {
+  id               String        @id @default(cuid())
+  code             String        @unique
+  name             String
+  icon             String        @default("receipt")
+  perItemLimit     Decimal?      @db.Decimal(14, 2)
+  receiptThreshold Decimal       @default(500) @db.Decimal(14, 2)
+  active           Boolean       @default(true)
+  lines            ExpenseLine[]
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+}
+
+model Currency {
+  code       String   @id
+  name       String
+  symbol     String
+  rateToBase Decimal  @db.Decimal(18, 8)
+  active     Boolean  @default(true)
+  updatedAt  DateTime @updatedAt
+}
+
+model Setting {
+  key       String   @id
+  value     Json
+  updatedAt DateTime @updatedAt
+}
+
+model ApprovalStep {
+  id              String         @id @default(cuid())
+  entityType      EntityType
+  travelRequestId String?
+  travelRequest   TravelRequest? @relation(fields: [travelRequestId], references: [id], onDelete: Cascade)
+  expenseReportId String?
+  expenseReport   ExpenseReport? @relation(fields: [expenseReportId], references: [id], onDelete: Cascade)
+  round           Int            @default(1)
+  level           Int
+  label           String
+  approverId      String
+  approver        User           @relation("StepApprover", fields: [approverId], references: [id])
+  actedById       String?
+  actedBy         User?          @relation("StepActor", fields: [actedById], references: [id])
+  status          StepStatus     @default(WAITING)
+  comment         String?
+  resolution      String?
+  escalated       Boolean        @default(false)
+  ruleName        String?
+  ruleVersion     Int?
+  dueAt           DateTime?
+  activatedAt     DateTime?
+  actedAt         DateTime?
+  createdAt       DateTime       @default(now())
+
+  @@index([approverId, status])
+  @@index([travelRequestId])
+  @@index([expenseReportId])
+}
+
+model Payment {
+  id           String        @id @default(cuid())
+  reportId     String        @unique
+  report       ExpenseReport @relation(fields: [reportId], references: [id])
+  method       String
+  amount       Decimal       @db.Decimal(14, 2)
+  currency     String        @default("INR")
+  scheduledFor DateTime?
+  paidAt       DateTime?
+  reference    String?
+  status       PaymentStatus @default(SCHEDULED)
+  recordedById String
+  recordedBy   User          @relation(fields: [recordedById], references: [id])
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+}
+
+model Attachment {
+  id              String         @id @default(cuid())
+  originalName    String
+  storedName      String         @unique
+  mimeType        String
+  size            Int
+  uploadedById    String
+  uploadedBy      User           @relation(fields: [uploadedById], references: [id])
+  travelRequestId String?
+  travelRequest   TravelRequest? @relation(fields: [travelRequestId], references: [id], onDelete: Cascade)
+  expenseLineId   String?
+  expenseLine     ExpenseLine?   @relation(fields: [expenseLineId], references: [id], onDelete: Cascade)
+  createdAt       DateTime       @default(now())
+}
+
+/// Snapshot of a request / report each time it is (re)submitted.
+model Revision {
+  id          String     @id @default(cuid())
+  entityType  EntityType
+  entityId    String
+  version     Int
+  snapshot    Json
+  createdById String
+  createdAt   DateTime   @default(now())
+
+  @@index([entityType, entityId])
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String
+  title     String
+  body      String
+  link      String?
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([userId, read])
+}
+
+/// Append-only, hash-chained audit trail (tamper evident).
+model AuditLog {
+  id         String   @id @default(cuid())
+  seq        Int      @unique @default(autoincrement())
+  actorId    String?
+  actorName  String?
+  action     String
+  entityType String
+  entityId   String?
+  details    Json     @default("{}")
+  prevHash   String
+  hash       String
+  createdAt  DateTime @default(now())
+
+  @@index([entityType, entityId])
+}
+
+model Counter {
+  key   String @id
+  value Int    @default(0)
+}

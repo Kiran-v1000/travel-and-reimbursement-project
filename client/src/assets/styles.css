@@ -1,0 +1,129 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Design tokens (RGB triplets so Tailwind can apply alpha). Contrast checked for WCAG 2.1 AA. */
+:root {
+  --bg: 246 247 251;
+  --surface: 255 255 255;
+  --subtle: 241 243 249;
+  --line: 226 230 240;
+  --ink: 15 23 42;
+  --muted: 92 102 123;
+  --brand: 79 70 229;
+  --brand-soft: 238 240 255;
+  --brand-ink: 67 56 202;
+  --ok: 21 128 61;
+  --warn: 180 83 9;
+  --bad: 200 30 30;
+  --info: 29 78 216;
+  color-scheme: light;
+}
+
+.dark {
+  --bg: 9 12 24;
+  --surface: 16 21 38;
+  --subtle: 23 29 50;
+  --line: 38 46 72;
+  --ink: 230 234 245;
+  --muted: 150 160 185;
+  --brand: 129 140 248;
+  --brand-soft: 30 32 70;
+  --brand-ink: 165 180 252;
+  --ok: 74 222 128;
+  --warn: 251 191 36;
+  --bad: 248 113 113;
+  --info: 96 165 250;
+  color-scheme: dark;
+}
+
+@layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  body {
+    @apply bg-bg text-ink font-sans text-[14px] leading-5;
+    font-feature-settings: 'cv11', 'ss01';
+  }
+  :focus-visible {
+    outline: 2px solid rgb(var(--brand));
+    outline-offset: 2px;
+    border-radius: 6px;
+  }
+  ::selection {
+    background: rgb(var(--brand) / 0.2);
+  }
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: rgb(var(--line)) transparent;
+  }
+}
+
+@layer components {
+  .card {
+    @apply bg-surface border border-line rounded-2xl shadow-card;
+  }
+  .card-hover {
+    @apply transition-[box-shadow,transform,border-color] duration-200 ease-out hover:shadow-lift hover:-translate-y-0.5 hover:border-brand/30;
+  }
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-3.5 h-9 text-[13px] font-medium whitespace-nowrap
+      transition-[background-color,box-shadow,transform,color,border-color] duration-150 ease-out active:scale-[0.98]
+      disabled:opacity-50 disabled:pointer-events-none select-none;
+  }
+  .btn-primary {
+    @apply btn bg-brand text-white shadow-sm hover:shadow-glow hover:bg-brand-ink dark:text-slate-950 dark:hover:bg-brand-ink;
+  }
+  .btn-secondary {
+    @apply btn bg-surface text-ink border border-line hover:bg-subtle hover:border-muted/40;
+  }
+  .btn-ghost {
+    @apply btn text-muted hover:text-ink hover:bg-subtle;
+  }
+  .btn-danger {
+    @apply btn bg-bad text-white hover:opacity-90 dark:text-slate-950;
+  }
+  .btn-success {
+    @apply btn bg-ok text-white hover:opacity-90 dark:text-slate-950;
+  }
+  .input {
+    @apply w-full h-10 rounded-xl border border-line bg-surface px-3 text-[14px] text-ink placeholder:text-muted/70
+      transition-[border-color,box-shadow] duration-150 outline-none
+      focus:border-brand focus:ring-4 focus:ring-brand/15 disabled:bg-subtle disabled:text-muted;
+  }
+  textarea.input {
+    @apply h-auto py-2.5 leading-relaxed;
+  }
+  .label {
+    @apply block text-[12.5px] font-medium text-ink/80 mb-1.5;
+  }
+  .kicker {
+    @apply text-[11px] font-semibold uppercase tracking-[0.08em] text-muted;
+  }
+  .num {
+    font-variant-numeric: tabular-nums;
+  }
+  .skeleton {
+    @apply relative overflow-hidden rounded-lg bg-subtle;
+  }
+  .skeleton::after {
+    content: '';
+    @apply absolute inset-0 -translate-x-full animate-shimmer;
+    background: linear-gradient(90deg, transparent, rgb(var(--surface) / 0.7), transparent);
+  }
+  .table-row {
+    @apply transition-colors duration-150 hover:bg-subtle/70;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
