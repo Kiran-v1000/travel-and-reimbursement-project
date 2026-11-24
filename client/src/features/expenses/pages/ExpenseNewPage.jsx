@@ -12,6 +12,7 @@ import { money, date } from '../../../shared/utils/format.js';
 import { ease } from '../../../shared/lib/motion.js';
 import { expensesApi } from '../api/expensesApi.js';
 import { useExpenseMutation } from '../hooks/useExpenses.js';
+import { HelpLink } from '../../help/index.js';
 
 export function ExpenseNewPage() {
   const navigate = useNavigate();
@@ -59,6 +60,7 @@ export function ExpenseNewPage() {
         <div>
           <p className="kicker">New expense report · step 1 of 2</p>
           <h1 className="text-[22px] font-semibold tracking-tight">What are you claiming for?</h1>
+          <HelpLink slug="claim-expense" className="mt-1" />
         </div>
       </div>
 

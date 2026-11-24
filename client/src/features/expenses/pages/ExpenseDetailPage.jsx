@@ -25,6 +25,7 @@ import { expensesApi } from '../api/expensesApi.js';
 import { LineEditor } from '../components/LineEditor.jsx';
 import { FinancePanel } from '../components/FinancePanel.jsx';
 import { CategoryIcon } from '../components/CategoryIcon.jsx';
+import { HelpLink } from '../../help/index.js';
 
 export function ExpenseDetailPage() {
   const { id } = useParams();
@@ -76,6 +77,7 @@ export function ExpenseDetailPage() {
         <Link to="/expenses" className="inline-flex min-h-6 items-center hover:text-ink">Expenses</Link>
         <span>/</span>
         <span className="font-mono text-ink">{r.code}</span>
+        <HelpLink slug={['DRAFT', 'RETURNED'].includes(r.status) ? 'claim-expense' : 'track-request'} label="Help" className="ml-auto" />
       </div>
 
       <DecisionBar steps={r.steps} round={r.round} requesterId={r.employeeId} onDone={refetch} />

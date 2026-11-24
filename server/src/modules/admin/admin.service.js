@@ -13,7 +13,7 @@ export async function reference() {
     prisma.department.findMany({ orderBy: { name: 'asc' }, select: { id: true, name: true, code: true } }),
     getSettings(),
   ]);
-  const publicKeys = ['baseCurrency', 'leadDaysDomestic', 'leadDaysInternational', 'maxTripDays', 'lodgingCapDomestic', 'lodgingCapInternational', 'mealsPerDiem', 'submissionDeadlineDays', 'estimateTolerancePct'];
+  const publicKeys = ['baseCurrency', 'leadDaysDomestic', 'leadDaysInternational', 'maxTripDays', 'lodgingCapDomestic', 'lodgingCapInternational', 'mealsPerDiem', 'submissionDeadlineDays', 'estimateTolerancePct', 'helpContact'];
   return { categories, currencies, costCenters, departments, settings: Object.fromEntries(publicKeys.map((k) => [k, settings[k]])) };
 }
 

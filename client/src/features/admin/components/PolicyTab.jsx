@@ -26,7 +26,7 @@ export function PolicyTab() {
 
   const save = useMutation({
     mutationFn: () => {
-      const keys = [...NUMS.map(([k]) => k), 'escalationEnabled', 'resubmitRule', 'fallbackApproverId', 'emailNotifications', 'accountingBankLedger', 'accountingAdjustmentLedger'];
+      const keys = [...NUMS.map(([k]) => k), 'escalationEnabled', 'resubmitRule', 'fallbackApproverId', 'emailNotifications', 'accountingBankLedger', 'accountingAdjustmentLedger', 'helpContact'];
       return adminApi.saveSettings(Object.fromEntries(keys.map((k) => [k, NUMS.some(([n]) => n === k) ? Number(s[k]) : s[k]])));
     },
     onSuccess: () => { toast.success('Policy saved', { description: 'New checks apply immediately.' }); qc.invalidateQueries({ queryKey: ['admin', 'settings'] }); qc.invalidateQueries({ queryKey: ['reference'] }); },
@@ -64,6 +64,7 @@ export function PolicyTab() {
         <div className="mt-5 grid gap-4 border-t border-line pt-5 sm:grid-cols-2">
           <Field label="Bank ledger (accounting export)" hint="Payments are credited to this ledger"><input className="input" maxLength={120} value={s.accountingBankLedger ?? ''} onChange={(e) => setS({ ...s, accountingBankLedger: e.target.value })} /></Field>
           <Field label="Adjustment ledger" hint="Takes any difference between amount paid and amount claimed"><input className="input" maxLength={120} value={s.accountingAdjustmentLedger ?? ''} onChange={(e) => setS({ ...s, accountingAdjustmentLedger: e.target.value })} /></Field>
+          <Field label="User guide contact" hint="The guide says &quot;Still stuck? Contact …&quot; — a team, person or email"><input className="input" maxLength={200} value={s.helpContact ?? ''} onChange={(e) => setS({ ...s, helpContact: e.target.value })} /></Field>
         </div>
       </section>
 

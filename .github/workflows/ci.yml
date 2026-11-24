@@ -87,6 +87,8 @@ jobs:
       - run: npm ci
       - name: Accessibility lint (jsx-a11y)
         run: npm run lint:a11y
+      - name: User guide check (links, placeholders, audiences)
+        run: npm run check:help
       - run: npm run build
       - name: Dependency audit (production packages)
         run: npm audit --omit=dev --audit-level=high

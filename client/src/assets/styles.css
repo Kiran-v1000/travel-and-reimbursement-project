@@ -121,6 +121,126 @@
   .table-row {
     @apply transition-colors duration-150 hover:bg-subtle/70;
   }
+
+  /* User guide articles (rendered from Markdown in features/help/content). */
+  .help-prose {
+    @apply text-[14.5px] leading-7 text-ink/90;
+  }
+  .help-prose > * + * {
+    @apply mt-4;
+  }
+  .help-prose h2 {
+    @apply mt-8 text-[18px] font-semibold tracking-tight text-ink scroll-mt-24;
+  }
+  .help-prose h3 {
+    @apply mt-6 text-[15.5px] font-semibold text-ink scroll-mt-24;
+  }
+  .help-prose a {
+    @apply font-medium text-brand underline decoration-brand/30 underline-offset-2 hover:decoration-brand;
+  }
+  .help-prose strong {
+    @apply font-semibold text-ink;
+  }
+  .help-prose ol {
+    @apply list-decimal space-y-2 pl-6 marker:font-semibold marker:text-brand;
+  }
+  .help-prose ul {
+    @apply list-disc space-y-1.5 pl-6 marker:text-muted;
+  }
+  .help-prose li > ul,
+  .help-prose li > ol {
+    @apply mt-1.5;
+  }
+  .help-prose code {
+    @apply rounded bg-subtle px-1.5 py-0.5 font-mono text-[12.5px];
+  }
+  .help-table {
+    @apply overflow-x-auto rounded-xl border border-line;
+  }
+  .help-table table {
+    @apply w-full text-left text-[13.5px];
+  }
+  .help-table th {
+    @apply bg-subtle/70 px-3 py-2 text-[12px] font-semibold uppercase tracking-wide text-muted;
+  }
+  .help-table td {
+    @apply border-t border-line px-3 py-2 align-top leading-6;
+  }
+  .help-callout {
+    @apply rounded-xl border px-4 py-3 text-[14px];
+  }
+  .help-callout > p {
+    @apply m-0;
+  }
+  .help-callout-label {
+    @apply mb-0.5 text-[11.5px] font-semibold uppercase tracking-wide;
+  }
+  .help-callout-tip,
+  .help-callout-example {
+    @apply border-ok/25 bg-ok/[0.06];
+  }
+  .help-callout-tip .help-callout-label,
+  .help-callout-example .help-callout-label {
+    @apply text-ok;
+  }
+  .help-callout-note,
+  .help-callout-youllneed {
+    @apply border-info/25 bg-info/[0.06];
+  }
+  .help-callout-note .help-callout-label,
+  .help-callout-youllneed .help-callout-label {
+    @apply text-info;
+  }
+  .help-callout-important {
+    @apply border-warn/30 bg-warn/[0.07];
+  }
+  .help-callout-important .help-callout-label {
+    @apply text-warn;
+  }
+}
+
+/* Printable user guide (Help → Printable guide → Print or save as PDF): only the guide, in
+   black on white, with each article starting cleanly. */
+@media print {
+  header.sticky,
+  .no-print,
+  [aria-label='Sidebar'],
+  [data-sonner-toaster] {
+    display: none !important;
+  }
+  html,
+  body {
+    background: #fff !important;
+    color: #111 !important;
+  }
+  :root,
+  .dark {
+    --bg: 255 255 255;
+    --surface: 255 255 255;
+    --subtle: 245 246 248;
+    --line: 210 214 222;
+    --ink: 17 17 17;
+    --muted: 70 75 85;
+  }
+  main,
+  .lg\:pl-\[248px\] {
+    padding: 0 !important;
+    max-width: none !important;
+  }
+  .help-guide-article {
+    break-inside: avoid-page;
+  }
+  .help-guide-article + .help-guide-article {
+    break-before: auto;
+  }
+  .help-prose a {
+    color: #111 !important;
+    text-decoration: none !important;
+  }
+  .card,
+  figure {
+    box-shadow: none !important;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

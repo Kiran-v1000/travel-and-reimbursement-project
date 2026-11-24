@@ -4,12 +4,13 @@ import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { AnimatePresence, motion } from 'framer-motion';
 import clsx from 'clsx';
-import { Search, CornerDownLeft, Plane, Receipt, Plus, ArrowRight } from 'lucide-react';
+import { Search, CornerDownLeft, Plane, Receipt, Plus, ArrowRight, BookOpen } from 'lucide-react';
 import { useAppStore, hasRole } from '../app/store.js';
 import { get } from '../shared/lib/api.js';
 import { useDebounce } from '../shared/hooks/index.js';
 import { StatusChip } from '../shared/components/ui/StatusChip.jsx';
 import { NAV } from './nav.js';
+import { searchHelp } from '../features/help/index.js';
 
 /** Ctrl/Cmd+K palette: jump to pages, start actions, and search records. */
 export function CommandPalette() {
@@ -42,7 +43,9 @@ export function CommandPalette() {
       { kind: 'action', icon: Plus, label: 'New travel request', hint: 'T', to: '/travel/new' },
       { kind: 'action', icon: Plus, label: 'New expense report', hint: 'N', to: '/expenses/new' },
     ].filter((a) => !s || a.label.toLowerCase().includes(s));
-    return [...actions, ...pages, ...(term.length >= 2 ? results ?? [] : [])];
+    // Questions ("how do I claim a taxi") find user-guide articles.
+    const help = s.length >= 2 ? searchHelp(s).slice(0, 4).map((a) => ({ kind: 'help', icon: BookOpen, label: a.title, hint: 'Help', to: `/help/${a.slug}` })) : [];
+    return [...actions, ...pages, ...help, ...(term.length >= 2 ? results ?? [] : [])];
   }, [q, user, results, term]);
 
   useEffect(() => {

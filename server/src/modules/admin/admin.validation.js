@@ -82,6 +82,8 @@ export const settingsSchema = z
     retentionAutoPurge: z.boolean(),
     accountingBankLedger: z.string().trim().min(1).max(120),
     accountingAdjustmentLedger: z.string().trim().min(1).max(120),
+    // Shown in the user guide: "Still stuck? Contact ..."
+    helpContact: z.string().trim().min(2).max(200),
   })
   .partial()
   .strict();

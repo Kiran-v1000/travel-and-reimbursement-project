@@ -1,16 +1,20 @@
-import { Children, cloneElement, isValidElement, useEffect, useId, useRef, useState } from 'react';
+import { Children, cloneElement, isValidElement, useContext, useEffect, useId, useRef, useState } from 'react';
+import { PageHelpContext } from '../../lib/pageHelp.js';
 import { motion, useReducedMotion, animate } from 'framer-motion';
 import clsx from 'clsx';
 import { Loader2 } from 'lucide-react';
 import { money } from '../../utils/format.js';
 
 export function PageHeader({ kicker, title, description, actions, children }) {
+  // Contextual help for this page, when the user guide has an article for it.
+  const Help = useContext(PageHelpContext);
   return (
     <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
       <div className="min-w-0">
         {kicker && <div className="kicker mb-1.5">{kicker}</div>}
         <h1 className="text-[24px] font-semibold tracking-tight md:text-[26px]">{title}</h1>
         {description && <p className="mt-1 max-w-2xl text-[13.5px] text-muted">{description}</p>}
+        {Help && <Help className="mt-1.5" />}
         {children}
       </div>
       {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}

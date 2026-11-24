@@ -2,9 +2,11 @@ import { Suspense, useEffect, useRef, useState } from 'react';
 import { NavLink, Link, useLocation, useNavigate, useOutlet } from 'react-router-dom';
 import { PageErrorBoundary } from '../shared/components/PageErrorBoundary.jsx';
 import { useDialogFocus } from '../shared/hooks/useDialogFocus.js';
+import { HelpPanel, WelcomeTour, HelpLink } from '../features/help/index.js';
+import { PageHelpContext } from '../shared/lib/pageHelp.js';
 import { AnimatePresence, motion } from 'framer-motion';
 import clsx from 'clsx';
-import { Plane, Receipt, Search, Plus, Moon, Sun, Menu, X, LogOut, UserCircle2, ChevronDown, UserCheck } from 'lucide-react';
+import { Plane, Receipt, Search, Plus, Moon, Sun, Menu, X, LogOut, UserCircle2, ChevronDown, UserCheck, HelpCircle } from 'lucide-react';
 import { NAV } from './nav.js';
 import { useAppStore, hasRole } from '../app/store.js';
 import { useLogout } from '../features/auth/index.js';
@@ -244,6 +246,9 @@ export function MainLayout({ fallback }) {
             </button>
             <div className="ml-auto flex items-center gap-1 sm:gap-1.5">
               <NewMenu />
+              <Link to="/help" className="btn-ghost h-9 w-9 px-0" aria-label="Help" title="Help">
+                <HelpCircle className="h-[18px] w-[18px]" aria-hidden />
+              </Link>
               <button type="button" className="btn-ghost h-9 w-9 px-0" onClick={toggleTheme} aria-label={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}>
                 <AnimatePresence mode="wait" initial={false}>
                   <motion.span key={theme} initial={{ rotate: -90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: 90, opacity: 0 }} transition={{ duration: 0.18 }}>
@@ -275,13 +280,17 @@ export function MainLayout({ fallback }) {
           <AnimatePresence mode="wait" initial={false}>
             <motion.div key={location.pathname} {...page}>
               <PageErrorBoundary resetKey={location.pathname}>
-                <Suspense fallback={fallback}>{outlet}</Suspense>
+                <PageHelpContext.Provider value={HelpLink}>
+                  <Suspense fallback={fallback}>{outlet}</Suspense>
+                </PageHelpContext.Provider>
               </PageErrorBoundary>
             </motion.div>
           </AnimatePresence>
         </main>
       </div>
       <CommandPalette />
+      <HelpPanel />
+      <WelcomeTour />
     </div>
   );
 }

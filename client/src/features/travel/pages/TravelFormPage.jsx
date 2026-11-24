@@ -13,6 +13,7 @@ import { useReference, useDebounce } from '../../../shared/hooks/index.js';
 import { money, isoDay, nights } from '../../../shared/utils/format.js';
 import { travelApi } from '../api/travelApi.js';
 import { useTravel, useTravelMutation } from '../hooks/useTravel.js';
+import { HelpLink } from '../../help/index.js';
 
 const plus = (days) => isoDay(new Date(Date.now() + days * 86400000));
 const LOCAL_KEY = 'voyage-travel-draft';
@@ -207,6 +208,7 @@ export function TravelFormPage() {
         <div>
           <p className="kicker">{editing ? existing?.code : 'New request'}</p>
           <h1 className="text-[22px] font-semibold tracking-tight">{editing ? 'Edit travel request' : 'Plan a business trip'}</h1>
+          <HelpLink slug="request-trip" className="mt-1" />
         </div>
         <AnimatePresence>
           {savedAt && !editing && (

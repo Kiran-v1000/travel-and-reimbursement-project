@@ -20,6 +20,7 @@ import { TRAVEL_STAGES } from '../../../shared/utils/status.js';
 import { ease } from '../../../shared/lib/motion.js';
 import { useTravel, useTravelMutation } from '../hooks/useTravel.js';
 import { travelApi } from '../api/travelApi.js';
+import { HelpLink } from '../../help/index.js';
 
 export function TravelDetailPage() {
   const { id } = useParams();
@@ -65,6 +66,7 @@ export function TravelDetailPage() {
         <Link to="/travel" className="inline-flex min-h-6 items-center hover:text-ink">Travel</Link>
         <span>/</span>
         <span className="font-mono text-ink">{t.code}</span>
+        <HelpLink slug="track-request" label="Help" className="ml-auto" />
       </div>
 
       <DecisionBar steps={t.steps} round={t.round} requesterId={t.requesterId} onDone={refetch} />

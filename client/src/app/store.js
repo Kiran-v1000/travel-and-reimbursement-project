@@ -16,11 +16,17 @@ export const useAppStore = create((set, get) => ({
   theme: readTheme(),
   sidebarOpen: false,
   paletteOpen: false,
+  // Help side panel: the article slug shown (null = closed); tour: the welcome tour is open.
+  helpSlug: null,
+  tourOpen: false,
 
   setSession: (user, delegatedFrom = []) => set({ user, delegatedFrom, booting: false }),
   clearSession: () => set({ user: null, delegatedFrom: [], booting: false }),
   setSidebar: (sidebarOpen) => set({ sidebarOpen }),
   setPalette: (paletteOpen) => set({ paletteOpen }),
+  openHelp: (helpSlug) => set({ helpSlug }),
+  closeHelp: () => set({ helpSlug: null }),
+  setTour: (tourOpen) => set({ tourOpen }),
   toggleTheme: () => {
     const theme = get().theme === 'dark' ? 'light' : 'dark';
     document.documentElement.classList.toggle('dark', theme === 'dark');

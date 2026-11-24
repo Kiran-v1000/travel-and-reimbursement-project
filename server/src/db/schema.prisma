@@ -135,6 +135,7 @@ model User {
   holdsOn            LegalHold[]        @relation("HoldSubject")
   retentionRuns      RetentionRun[]
   sessions           Session[]
+  helpFeedback       HelpFeedback[]
   attachments        Attachment[]
   createdAt          DateTime           @default(now())
   updatedAt          DateTime           @updatedAt
@@ -577,4 +578,18 @@ model Session {
 
   @@index([userId, revokedAt])
   @@index([expiresAt])
+}
+
+/// "Was this helpful?" on user-guide articles. One answer per person per article (they can change it).
+model HelpFeedback {
+  id        String   @id @default(cuid())
+  slug      String
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  helpful   Boolean
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, slug])
+  @@index([slug, updatedAt])
 }

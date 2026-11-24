@@ -49,6 +49,8 @@ export const DEFAULT_SETTINGS = {
   // differences go to the adjustment ledger so every voucher balances.
   accountingBankLedger: 'Bank Account',
   accountingAdjustmentLedger: 'Reimbursement Adjustments',
+  // Who the user guide tells people to contact when they are stuck (name, team or email).
+  helpContact: 'your Finance team',
 };
 
 export const LEVELS = {
