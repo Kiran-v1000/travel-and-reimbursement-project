@@ -102,10 +102,11 @@ export function AccountingExportDialog({ open, onClose }) {
           className="mt-5 rounded-2xl border border-line bg-subtle/50 p-4" aria-live="polite">
           {!valid ? (
             <p className="text-[13px] text-muted">Choose a date range.</p>
-          ) : preview.isLoading ? (
-            <p className="flex items-center gap-2 text-[13px] text-muted"><Spinner className="h-4 w-4" /> Checking payments…</p>
           ) : preview.isError ? (
             <p className="text-[13px] text-bad">{preview.error.message}</p>
+          ) : !p ? (
+            // No data yet - loading, or the query is switched off while the dialog is closed.
+            <p className="flex items-center gap-2 text-[13px] text-muted"><Spinner className="h-4 w-4" /> Checking payments…</p>
           ) : nothing ? (
             <p className="flex items-center gap-2 text-[13px]"><CheckCircle2 className="h-4 w-4 text-ok" /> Nothing left to export in this period{p.alreadyExported ? ` — ${p.alreadyExported.toLocaleString('en-IN')} payments were exported earlier.` : '.'}</p>
           ) : (
