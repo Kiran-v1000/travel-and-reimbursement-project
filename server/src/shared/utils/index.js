@@ -1,5 +1,6 @@
 import crypto from 'node:crypto';
 import { prisma } from '../../db/pool.js';
+import { badRequest } from '../errors/AppError.js';
 
 export const round2 = (n) => Math.round((Number(n) + Number.EPSILON) * 100) / 100;
 export const num = (d) => (d == null ? 0 : Number(d));
@@ -31,8 +32,22 @@ export async function toBase(amount, currency) {
   const base = await getSetting('baseCurrency', 'INR');
   if (!currency || currency === base) return { rate: 1, base: round2(amount), date: new Date() };
   const cur = await prisma.currency.findUnique({ where: { code: currency } });
-  const rate = cur ? Number(cur.rateToBase) : 1;
-  return { rate, base: round2(Number(amount) * rate), date: cur?.updatedAt ?? new Date() };
+  // Never guess a rate: an unknown or switched-off currency would otherwise convert 1:1.
+  if (!cur || !cur.active) throw badRequest(`${currency} is not an accepted currency`);
+  const rate = Number(cur.rateToBase);
+  return { rate, base: round2(Number(amount) * rate), date: cur.updatedAt };
+}
+
+/** Reject references to cost centers / categories that do not exist or are switched off. */
+export async function assertActiveRefs({ costCenterId, categoryId } = {}) {
+  if (costCenterId) {
+    const cc = await prisma.costCenter.findUnique({ where: { id: costCenterId }, select: { active: true } });
+    if (!cc?.active) throw badRequest('Choose an active cost center');
+  }
+  if (categoryId) {
+    const cat = await prisma.expenseCategory.findUnique({ where: { id: categoryId }, select: { active: true } });
+    if (!cat?.active) throw badRequest('Choose an active expense category');
+  }
 }
 
 export const sha256 = (s) => crypto.createHash('sha256').update(s).digest('hex');

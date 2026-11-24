@@ -260,6 +260,8 @@ async function applyPlan(plan, jobId, total) {
   // 4. Optional: deactivate people who are no longer in the HR file.
   for (const part of chunk(deactivate.map((u) => u.id), 1000)) {
     await prisma.user.updateMany({ where: { id: { in: part } }, data: { active: false } });
+    // Leavers lose access at once: end every session they still have.
+    await prisma.session.updateMany({ where: { userId: { in: part }, revokedAt: null }, data: { revokedAt: new Date(), revokedReason: 'DEACTIVATED' } });
   }
 
   // 5. Recompute every reporting path in one statement.

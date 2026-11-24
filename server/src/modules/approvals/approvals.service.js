@@ -94,7 +94,9 @@ export async function act(user, stepId, action, comment) {
   const now = new Date();
   const resolution = perm.onBehalf ? `Acted by ${user.name} on behalf of ${perm.onBehalf.name}` : step.resolution;
 
+  // The decision and its audit entry commit together: no decision without an audit record.
   const outcome = await prisma.$transaction(async (tx) => {
+   const o = await (async () => {
     // Optimistic guard against double-submit races.
     const upd = await tx.approvalStep.updateMany({
       where: { id: step.id, status: 'PENDING' },
@@ -123,13 +125,17 @@ export async function act(user, stepId, action, comment) {
     if (isTravel) await tx.travelRequest.update({ where: { id: entity.id }, data: { status, decidedAt: action === 'REJECTED' ? now : null } });
     else await tx.expenseReport.update({ where: { id: entity.id }, data: { status } });
     return { kind: action };
+   })();
+    const after = o.kind === 'final' ? (isTravel ? 'APPROVED' : 'FINANCE_REVIEW') : o.kind === 'REJECTED' || o.kind === 'RETURNED' ? o.kind : 'PENDING';
+    await audit(user, `${isTravel ? 'travel' : 'expense'}.step_${action.toLowerCase()}`, isTravel ? 'TRAVEL' : 'EXPENSE', entity.id, {
+      code: entity.code, round: step.round, level: step.level, label: step.label, comment, onBehalfOf: perm.onBehalf?.name ?? null, rule: step.ruleName, ruleVersion: step.ruleVersion,
+      step: { from: 'PENDING', to: action }, status: { from: entity.status, to: after },
+    }, { tx });
+    return o;
   });
 
   const label = isTravel ? 'travel request' : 'expense report';
   const link = isTravel ? `/travel/${entity.id}` : `/expenses/${entity.id}`;
-  await audit(user, `${isTravel ? 'travel' : 'expense'}.step_${action.toLowerCase()}`, isTravel ? 'TRAVEL' : 'EXPENSE', entity.id, {
-    code: entity.code, level: step.level, label: step.label, comment, onBehalfOf: perm.onBehalf?.name ?? null, rule: step.ruleName, ruleVersion: step.ruleVersion,
-  });
 
   if (outcome.kind === 'next') {
     await notify(outcome.nextSteps.map((s) => s.approverId), {

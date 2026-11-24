@@ -12,6 +12,7 @@ import { Modal } from '../../../shared/components/ui/Modal.jsx';
 import { UserPicker } from '../../../shared/components/UserPicker.jsx';
 import { date, isoDay } from '../../../shared/utils/format.js';
 import { ROLE_LABEL } from '../../../shared/utils/status.js';
+import { SessionsCard } from '../components/SessionsCard.jsx';
 
 export function ProfilePage() {
   const user = useAppStore((s) => s.user);
@@ -69,6 +70,7 @@ export function ProfilePage() {
           <button type="button" className="btn-secondary" onClick={() => setPwOpen(true)}>Change password</button>
         </section>
       )}
+      <SessionsCard />
       <Modal open={pwOpen} onClose={() => setPwOpen(false)} title="Change password" size="sm">
         <ChangePasswordForm onDone={() => setPwOpen(false)} />
       </Modal>

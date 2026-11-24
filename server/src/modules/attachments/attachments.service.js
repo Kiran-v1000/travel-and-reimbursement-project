@@ -2,7 +2,8 @@ import path from 'node:path';
 import fs from 'node:fs';
 import { prisma } from '../../db/pool.js';
 import { env } from '../../config/env.js';
-import { badRequest, notFound, forbidden, conflict } from '../../shared/errors/AppError.js';
+import { AppError, badRequest, notFound, forbidden, conflict } from '../../shared/errors/AppError.js';
+import { scanFile, scanningEnabled } from '../../shared/utils/malwareScan.js';
 import { assertCanView } from '../../shared/utils/access.js';
 import { audit } from '../audit/audit.service.js';
 import { recalc } from '../expenses/expenses.service.js';
@@ -49,6 +50,22 @@ export async function upload(user, files, { travelRequestId, expenseLineId }) {
     if (ctx.ownerId !== user.id) throw forbidden('You can only add files to your own records');
     if (!EDITABLE.includes(ctx.status)) throw conflict('Files can only be added while the item is a draft or returned');
     for (const f of files) if (!sniff(f.path, f.mimetype)) throw badRequest(`${f.originalname} is not a valid ${ALLOWED[f.mimetype]} file`);
+    // Malware scan (when a scanner is configured). Fails closed: no scan, no upload.
+    if (scanningEnabled()) {
+      for (const f of files) {
+        let result;
+        try {
+          result = await scanFile(f.path);
+        } catch (err) {
+          console.error('[attachments] scan failed', err.message);
+          throw new AppError(503, 'Receipts cannot be checked for viruses right now. Please try again in a few minutes.', 'SCAN_UNAVAILABLE');
+        }
+        if (!result.clean) {
+          await audit(user, 'attachment.malware_blocked', ctx.entityType, travelRequestId || ctx.reportId, { file: f.originalname.slice(0, 200), signature: result.signature });
+          throw badRequest(`${f.originalname} was blocked: it contains malware (${result.signature}).`);
+        }
+      }
+    }
 
     const created = [];
     for (const f of files) {

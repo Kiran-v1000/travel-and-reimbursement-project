@@ -1,6 +1,6 @@
 import { prisma } from '../../db/pool.js';
 import { badRequest, forbidden, notFound, conflict, AppError } from '../../shared/errors/AppError.js';
-import { nextCode, toBase, round2, getSetting, num, paging, toCsv } from '../../shared/utils/index.js';
+import { nextCode, toBase, round2, getSetting, num, paging, toCsv, assertActiveRefs } from '../../shared/utils/index.js';
 import { assertCanView, visibilityWhere } from '../../shared/utils/access.js';
 import { memo, totalFromCounts } from '../../shared/utils/cache.js';
 import { audit } from '../audit/audit.service.js';
@@ -76,6 +76,7 @@ export async function get(user, id) {
 }
 
 export async function create(user, data) {
+  await assertActiveRefs({ costCenterId: data.costCenterId });
   const totals = await computeTotals(data);
   const flags = await checkTravel({ ...data, ...totals });
   const t = await prisma.$transaction(async (tx) => {
@@ -99,6 +100,7 @@ async function loadOwned(user, id) {
 export async function update(user, id, data) {
   const t = await loadOwned(user, id);
   if (!['DRAFT', 'RETURNED'].includes(t.status)) throw conflict('Only draft or returned requests can be edited');
+  await assertActiveRefs({ costCenterId: data.costCenterId });
   const totals = await computeTotals(data);
   const flags = await checkTravel({ ...data, ...totals });
   const updated = await prisma.travelRequest.update({ where: { id }, data: { ...data, estTotalBase: totals.estTotalBase, policyFlags: flags } });

@@ -169,6 +169,8 @@ export async function download(user, batchId, res) {
   const ledgers = { bankLedger: s.accountingBankLedger || 'Bank Account', adjustmentLedger: s.accountingAdjustmentLedger || 'Reimbursement Adjustments' };
   const stamp = `${day(batch.fromDate)}_to_${day(batch.toDate)}`;
   const tally = batch.format === 'TALLY';
+  // Record the download before any data leaves; refuse it if the audit entry cannot be written.
+  await audit(user, 'finance.accounting_downloaded', 'EXPORT', batch.id, { format: batch.format, payments: batch.payments }, { strict: true });
   res.setHeader('Content-Type', tally ? 'application/xml; charset=utf-8' : 'text/csv; charset=utf-8');
   res.setHeader('Content-Disposition', `attachment; filename="voyage-reimbursements_${stamp}${tally ? '_tally.xml' : '_journal.csv'}"`);
   try {
@@ -180,5 +182,4 @@ export async function download(user, batchId, res) {
     throw err;
   }
   res.end();
-  await audit(user, 'finance.accounting_downloaded', 'EXPORT', batch.id, { format: batch.format });
 }

@@ -134,6 +134,7 @@ model User {
   holdsReleased      LegalHold[]        @relation("HoldReleasedBy")
   holdsOn            LegalHold[]        @relation("HoldSubject")
   retentionRuns      RetentionRun[]
+  sessions           Session[]
   attachments        Attachment[]
   createdAt          DateTime           @default(now())
   updatedAt          DateTime           @updatedAt
@@ -555,4 +556,25 @@ model AnalyticsSnapshot {
   computeMs  Int
 
   @@index([computedAt])
+}
+
+/// One signed-in session (the JWT's jti). Lets the server end a session on sign-out, after
+/// inactivity, on deactivation or password reset - instead of trusting the token until it expires.
+model Session {
+  id            String    @id @default(cuid())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// PASSWORD | SSO
+  method        String
+  createdAt     DateTime  @default(now())
+  lastSeenAt    DateTime  @default(now())
+  expiresAt     DateTime
+  revokedAt     DateTime?
+  /// SIGN_OUT | IDLE | DEACTIVATED | PASSWORD_CHANGED | PASSWORD_RESET | ADMIN
+  revokedReason String?
+  ip            String?
+  userAgent     String?
+
+  @@index([userId, revokedAt])
+  @@index([expiresAt])
 }

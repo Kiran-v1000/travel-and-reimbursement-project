@@ -4,6 +4,8 @@ import { Prisma } from '@prisma/client';
 import { env, isProd } from '../../config/env.js';
 import { prisma } from '../../db/pool.js';
 import { AppError, unauthorized, forbidden } from '../errors/AppError.js';
+import { checkSession } from '../../modules/auth/auth.sessions.js';
+import { audit } from '../../modules/audit/audit.service.js';
 
 export const AUTH_COOKIE = 'tr_session';
 
@@ -42,10 +44,11 @@ export const authenticate = asyncHandler(async (req, _res, next) => {
   }
   const user = await loadSessionUser(payload.sub);
   if (!user || !user.active) throw unauthorized('Account is inactive');
-  // Sessions issued before the latest password change are no longer valid.
-  if (user.passwordChangedAt && payload.iat * 1000 < user.passwordChangedAt.getTime() - 1000) {
-    throw unauthorized('Your password was changed. Please sign in again.');
-  }
+  // The token is only a pointer: the server-side session must still be live (not signed out,
+  // not idle too long, not ended by deactivation or a password change, not past its lifetime).
+  const session = await checkSession(payload.sid, user);
+  if (!session.ok) throw new AppError(401, session.message, 'SESSION_ENDED', { reason: session.reason });
+  req.sessionId = payload.sid;
   // A temporary password unlocks only the account endpoints until it is replaced.
   if (user.mustChangePassword && !req.originalUrl.startsWith('/api/auth/')) {
     throw new AppError(403, 'Please choose a new password before continuing.', 'PASSWORD_CHANGE_REQUIRED');
@@ -74,8 +77,27 @@ export const validate =
 
 export const notFoundHandler = (req, _res, next) => next(new AppError(404, `Route ${req.method} ${req.path} not found`, 'NOT_FOUND'));
 
+/**
+ * Record authorization failures (403) in the audit trail: who tried what, where. One entry per
+ * person + route per minute, so a script hammering an endpoint cannot flood the log.
+ */
+const deniedSeen = new Map();
+function logAccessDenied(req, err) {
+  if (err.code === 'PASSWORD_CHANGE_REQUIRED') return;
+  const path = `${req.baseUrl ?? ''}${req.path ?? ''}`;
+  const key = `${req.user?.id ?? req.ip}|${req.method}|${path}`;
+  const now = Date.now();
+  if ((deniedSeen.get(key) ?? 0) > now - 60_000) return;
+  if (deniedSeen.size > 10_000) deniedSeen.clear();
+  deniedSeen.set(key, now);
+  audit(req.user ?? null, 'security.access_denied', 'SECURITY', null, {
+    method: req.method, path, role: req.user?.role ?? null, reason: err.message, ip: req.ip,
+  }).catch(() => {});
+}
+
 // eslint-disable-next-line no-unused-vars
 export const errorHandler = (err, req, res, _next) => {
+  if (err instanceof AppError && err.status === 403) logAccessDenied(req, err);
   if (res.headersSent) {
     // A streamed response failed part-way; the stream has been aborted, just log it.
     console.error(err);

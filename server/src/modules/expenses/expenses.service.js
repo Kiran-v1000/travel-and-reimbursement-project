@@ -1,6 +1,6 @@
 import { prisma } from '../../db/pool.js';
 import { badRequest, forbidden, notFound, conflict, AppError } from '../../shared/errors/AppError.js';
-import { nextCode, toBase, round2, getSetting, num, paging, toCsv, attachLineCounts } from '../../shared/utils/index.js';
+import { nextCode, toBase, round2, getSetting, num, paging, toCsv, attachLineCounts, assertActiveRefs } from '../../shared/utils/index.js';
 import { assertCanView, visibilityWhere } from '../../shared/utils/access.js';
 import { memo, totalFromCounts } from '../../shared/utils/cache.js';
 import { audit } from '../audit/audit.service.js';
@@ -84,6 +84,7 @@ async function assertLinkable(user, travelRequestId) {
 
 export async function create(user, data) {
   await assertLinkable(user, data.travelRequestId);
+  await assertActiveRefs({ costCenterId: data.costCenterId });
   const base = await getSetting('baseCurrency', 'INR');
   const r = await prisma.$transaction(async (tx) => {
     const code = await nextCode('EX', tx);
@@ -125,6 +126,7 @@ export async function recalc(id) {
 export async function update(user, id, data) {
   const r = await loadEditable(user, id);
   await assertLinkable(user, data.travelRequestId);
+  await assertActiveRefs({ costCenterId: data.costCenterId });
   await prisma.expenseReport.update({ where: { id }, data: { ...data, travelRequestId: data.travelRequestId || null } });
   await recalc(id);
   await audit(user, 'expense.updated', 'EXPENSE', id, { code: r.code });
@@ -132,6 +134,7 @@ export async function update(user, id, data) {
 }
 
 async function lineData(data) {
+  await assertActiveRefs({ categoryId: data.categoryId });
   const fx = await toBase(data.amount, data.currency);
   return { ...data, fxRate: fx.rate, fxDate: fx.date, baseAmount: fx.base };
 }

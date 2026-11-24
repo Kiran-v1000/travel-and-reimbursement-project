@@ -7,7 +7,27 @@ const schema = z.object({
   PORT: z.coerce.number().int().positive().default(4010),
   DATABASE_URL: z.string().min(1, 'DATABASE_URL is required'),
   JWT_SECRET: z.string().min(16, 'JWT_SECRET must be at least 16 characters'),
-  JWT_EXPIRES_IN: z.string().default('8h'),
+  // Sessions (server-side, revocable). Finance and Administrators get shorter limits.
+  SESSION_HOURS: z.coerce.number().positive().max(24).default(8),
+  SESSION_IDLE_MINUTES: z.coerce.number().positive().max(720).default(30),
+  PRIVILEGED_SESSION_HOURS: z.coerce.number().positive().max(24).default(4),
+  PRIVILEGED_IDLE_MINUTES: z.coerce.number().positive().max(240).default(15),
+  // When true (and Microsoft sign-in is configured), Finance and Administrators must sign in with
+  // Microsoft - so the company's MFA / Conditional Access applies. BREAK_GLASS_EMAILS may still use
+  // a password (emergency administrator accounts; keep the list short and monitored).
+  PRIVILEGED_SSO_ONLY: z
+    .string()
+    .optional()
+    .transform((v) => v === 'true'),
+  BREAK_GLASS_EMAILS: z
+    .string()
+    .default('')
+    .transform((v) => v.split(',').map((d) => d.trim().toLowerCase()).filter(Boolean)),
+  // Malware scanning of uploads via ClamAV (clamd). When CLAMAV_HOST is set, every upload is
+  // scanned and rejected if infected - or if the scanner cannot be reached (fail closed).
+  CLAMAV_HOST: z.string().optional(),
+  CLAMAV_PORT: z.coerce.number().int().positive().default(3310),
+  CLAMAV_TIMEOUT_MS: z.coerce.number().int().positive().default(15000),
   CLIENT_URL: z.string().default('http://localhost:5195'),
   UPLOAD_DIR: z.string().default('uploads'),
   MAX_UPLOAD_MB: z.coerce.number().positive().default(10),
@@ -86,6 +106,10 @@ if (env.SSO_ENABLED && !(env.AZURE_AD_TENANT_ID && env.AZURE_AD_CLIENT_ID && env
   problems.push('SSO_ENABLED=true needs AZURE_AD_TENANT_ID, AZURE_AD_CLIENT_ID and AZURE_AD_CLIENT_SECRET.');
 }
 if (isProd) problems.push(...productionProblems(env));
+if (env.PRIVILEGED_SSO_ONLY && !env.SSO_ENABLED) problems.push('PRIVILEGED_SSO_ONLY=true needs Microsoft sign-in (SSO_ENABLED=true), or Finance and Administrators could not sign in.');
+// Not fatal, but should be fixed before go-live (see docs/SECURITY.md).
+if (isProd && !env.CLAMAV_HOST) console.warn('[security] CLAMAV_HOST is not set: uploaded receipts are NOT scanned for malware.');
+if (isProd && !env.PRIVILEGED_SSO_ONLY) console.warn('[security] PRIVILEGED_SSO_ONLY is off: Finance and Administrators can sign in with a password (no company MFA).');
 if (problems.length) {
   console.error('Refusing to start - fix the configuration:');
   problems.forEach((p) => console.error(`  - ${p}`));

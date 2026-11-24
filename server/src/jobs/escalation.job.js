@@ -4,6 +4,7 @@ import { prisma } from '../db/pool.js';
 import { escalateOverdue } from '../modules/approvals/approvals.service.js';
 import { warmOrgAnalytics, precomputeAnalytics } from '../modules/reports/reports.service.js';
 import { scheduledRun as retentionRun } from '../modules/compliance/compliance.retention.service.js';
+import { purgeOldSessions } from '../modules/auth/auth.sessions.js';
 
 const tasks = [];
 
@@ -60,6 +61,18 @@ export function startJobs() {
         if (r) console.log(`[jobs] analytics precomputed for ${r.built}/${r.scopes} scope(s) in ${Math.round(r.ms / 1000)}s, ${r.removed} old snapshot(s) removed`);
       } catch (err) {
         console.error('[jobs] analytics precompute failed', err.message);
+      }
+    }),
+  );
+
+  // Nightly: drop session rows that ended more than 30 days ago.
+  tasks.push(
+    cron.schedule('5 3 * * *', async () => {
+      try {
+        const n = await purgeOldSessions();
+        if (n) console.log(`[jobs] removed ${n} old session record(s)`);
+      } catch (err) {
+        console.error('[jobs] session cleanup failed', err.message);
       }
     }),
   );

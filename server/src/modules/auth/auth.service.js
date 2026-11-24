@@ -1,5 +1,4 @@
 import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
 import { prisma } from '../../db/pool.js';
 import { env } from '../../config/env.js';
 import { badRequest, unauthorized } from '../../shared/errors/AppError.js';
@@ -7,13 +6,13 @@ import { forgetCachedUser } from '../../shared/middlewares/index.js';
 import { passwordProblem } from '../../db/seeds/reference-data.js';
 import { audit } from '../audit/audit.service.js';
 import { profileSelect } from '../users/users.service.js';
+import { createSession, isPrivileged, revokeAllSessions } from './auth.sessions.js';
+import { ssoConfigured } from './auth.sso.service.js';
 
 // Used when the email is unknown, so both paths spend the same bcrypt time.
 const DUMMY_HASH = bcrypt.hashSync('timing-equaliser', 10);
 
-export const signSession = (user) => jwt.sign({ sub: user.id, role: user.role }, env.JWT_SECRET, { expiresIn: env.JWT_EXPIRES_IN });
-
-export async function login(email, password) {
+export async function login(email, password, req) {
   const user = await prisma.user.findUnique({ where: { email } });
   const ok = await bcrypt.compare(password, user?.passwordHash ?? DUMMY_HASH);
   if (!user || !ok) {
@@ -21,11 +20,16 @@ export async function login(email, password) {
     throw unauthorized('Incorrect email or password');
   }
   if (!user.active) throw unauthorized('Your account is inactive. Contact an administrator.');
-  const token = signSession(user);
+  // Finance and Administrators sign in through Microsoft (company MFA) when that is required.
+  if (env.PRIVILEGED_SSO_ONLY && ssoConfigured() && isPrivileged(user.role) && !env.BREAK_GLASS_EMAILS.includes(user.email.toLowerCase())) {
+    await audit(user, 'auth.login_blocked', 'USER', user.id, { reason: 'PRIVILEGED_SSO_ONLY' });
+    throw unauthorized('Finance and administrator accounts must sign in with Microsoft.');
+  }
+  const { token, maxAge } = await createSession(user, req, 'PASSWORD');
   await prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } });
-  await audit(user, 'auth.login', 'USER', user.id);
+  await audit(user, 'auth.login', 'USER', user.id, { method: 'password', ip: req?.ip ?? null });
   const profile = await prisma.user.findUnique({ where: { id: user.id }, select: profileSelect });
-  return { token, user: profile };
+  return { token, maxAge, user: profile };
 }
 
 export async function me(userId) {
@@ -42,8 +46,8 @@ export async function me(userId) {
   return { user: { ...user, hasPassword: !!local?.passwordHash }, delegatedFrom };
 }
 
-/** Change your own password. Signs out every older session. Returns a fresh session token. */
-export async function changePassword(userId, currentPassword, newPassword) {
+/** Change your own password. Ends every other session. Returns a fresh session for this device. */
+export async function changePassword(userId, currentPassword, newPassword, req) {
   const user = await prisma.user.findUnique({ where: { id: userId } });
   if (!user?.passwordHash) throw badRequest('This account signs in with Microsoft and has no password to change.');
   if (!(await bcrypt.compare(currentPassword, user.passwordHash))) {
@@ -58,8 +62,7 @@ export async function changePassword(userId, currentPassword, newPassword) {
     data: { passwordHash: await bcrypt.hash(newPassword, 12), mustChangePassword: false, passwordChangedAt: new Date() },
   });
   forgetCachedUser(user.id);
-  await audit(user, 'auth.password_changed', 'USER', user.id);
-  // Issue the new token a moment after passwordChangedAt so it is not treated as "older".
-  await new Promise((r) => setTimeout(r, 1100));
-  return signSession(updated);
+  const ended = await revokeAllSessions(user.id, 'PASSWORD_CHANGED');
+  await audit(user, 'auth.password_changed', 'USER', user.id, { sessionsEnded: ended });
+  return createSession(updated, req, 'PASSWORD');
 }

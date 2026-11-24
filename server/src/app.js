@@ -4,6 +4,7 @@ import cors from 'cors';
 import compression from 'compression';
 import cookieParser from 'cookie-parser';
 import morgan from 'morgan';
+import { redactUrl } from './shared/utils/redact.js';
 import { env, isProd } from './config/env.js';
 import { apiLimiter } from './shared/middlewares/rateLimits.js';
 import { prisma } from './db/pool.js';
@@ -34,7 +35,19 @@ export function createApp() {
   app.use(compression());
   app.use(express.json({ limit: '1mb' }));
   app.use(cookieParser());
-  if (env.REQUEST_LOGGING) app.use(morgan(isProd ? 'combined' : 'dev'));
+  if (env.REQUEST_LOGGING) {
+    // Request logs never carry sign-in codes, tokens or other secrets that can appear in a
+    // query string (e.g. Microsoft's ?code=... on the sign-in callback) or in the Referer.
+    morgan.token('safe-url', (req) => redactUrl(req.originalUrl || req.url));
+    morgan.token('safe-referrer', (req) => redactUrl(req.headers.referer || req.headers.referrer || ''));
+    app.use(
+      morgan(
+        isProd
+          ? ':remote-addr - [:date[clf]] ":method :safe-url HTTP/:http-version" :status :res[content-length] ":safe-referrer" ":user-agent"'
+          : ':method :safe-url :status :response-time ms - :res[content-length]',
+      ),
+    );
+  }
   app.use('/api', apiLimiter);
 
   app.get('/api/health', async (_req, res) => {

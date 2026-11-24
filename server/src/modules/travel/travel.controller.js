@@ -11,7 +11,7 @@ export const list = async (req, res) => res.json(await svc.list(req.user, req.qu
 export const linkable = async (req, res) => res.json(await svc.linkable(req.user));
 export const exportCsv = async (req, res) => {
   const csv = await svc.exportCsv(req.user, req.query);
-  await audit(req.user, 'travel.exported', 'TRAVEL', null, { filters: req.query });
+  await audit(req.user, 'travel.exported', 'TRAVEL', null, { filters: req.query }, { strict: true });
   sendCsv(res, 'travel-requests.csv', csv);
 };
 export const policyPreview = async (req, res) => res.json(await svc.policyPreview(req.user, req.body));

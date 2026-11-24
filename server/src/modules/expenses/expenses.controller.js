@@ -4,7 +4,7 @@ import * as svc from './expenses.service.js';
 export const list = async (req, res) => res.json(await svc.list(req.user, req.query));
 export const exportCsv = async (req, res) => {
   const csv = await svc.exportCsv(req.user, req.query);
-  await audit(req.user, 'expense.exported', 'EXPENSE', null, { filters: req.query });
+  await audit(req.user, 'expense.exported', 'EXPENSE', null, { filters: req.query }, { strict: true });
   res.setHeader('Content-Type', 'text/csv');
   res.setHeader('Content-Disposition', 'attachment; filename="expense-reports.csv"');
   res.send(csv);

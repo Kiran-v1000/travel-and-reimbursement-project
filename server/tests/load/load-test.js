@@ -8,8 +8,8 @@
  * Each scenario rotates through many real users' sessions, like real traffic does.
  */
 import autocannon from 'autocannon';
-import jwt from 'jsonwebtoken';
-import { env } from '../../src/config/env.js';
+import { createSession } from '../../src/modules/auth/auth.sessions.js';
+import '../../src/config/env.js';
 import { prisma } from '../../src/db/pool.js';
 import { startLiveDashboard } from './live-dashboard.js';
 
@@ -19,8 +19,9 @@ const DURATION = Number(process.env.DURATION || 15);
 const live = process.argv.includes('--live') ? startLiveDashboard(Number(process.env.LIVE_PORT || 4099)) : null;
 const publish = (m) => live?.send(m);
 
-const token = (u) => `tr_session=${jwt.sign({ sub: u.id, role: u.role }, env.JWT_SECRET, { expiresIn: '1h' })}`;
-const pool = async (where, take) => (await prisma.user.findMany({ where, select: { id: true, role: true }, take })).map(token);
+// Real server-side sessions (the API rejects tokens without one).
+const token = async (u) => `tr_session=${(await createSession(u, null, 'LOADTEST')).token}`;
+const pool = async (where, take) => Promise.all((await prisma.user.findMany({ where, select: { id: true, role: true }, take })).map(token));
 
 const employees = await pool({ id: { startsWith: 'emp-' } }, 2000);
 const managers = await pool({ id: { startsWith: 'mgr-' } }, 500);

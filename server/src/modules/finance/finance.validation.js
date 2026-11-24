@@ -21,6 +21,7 @@ export const paymentSchema = z.object({
   currency: z.string().length(3).optional(),
   paidAt: z.coerce.date(),
   reference: z.string().trim().min(3, 'Enter the bank / transaction reference').max(80),
+  adjustmentReason: z.string().trim().max(300).optional(),
 });
 
 const isoDay = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Use a YYYY-MM-DD date');

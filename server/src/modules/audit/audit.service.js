@@ -13,31 +13,49 @@ const canonical = (v) => {
 const digest = (e) =>
   sha256(canonical([e.prevHash, e.actorId ?? null, e.action, e.entityType, e.entityId ?? null, e.details ?? {}, new Date(e.createdAt).toISOString()]));
 
+// Never let secrets into the audit trail, whatever a caller passes in details.
+const SECRET_KEY = /pass(word)?|secret|token|authorization|cookie|api[-_]?key|otp|cvv|card[-_]?number|account[-_]?number|iban/i;
+export function redact(v) {
+  if (Array.isArray(v)) return v.map(redact);
+  if (v && typeof v === 'object' && !(v instanceof Date)) {
+    return Object.fromEntries(Object.entries(v).map(([k, x]) => [k, SECRET_KEY.test(k) && typeof x !== 'boolean' ? '[redacted]' : redact(x)]));
+  }
+  return v;
+}
+
+async function writeEntry(tx, actor, action, entityType, entityId, details) {
+  await tx.$executeRaw`SELECT pg_advisory_xact_lock(7411)`;
+  const last = await tx.auditLog.findFirst({ orderBy: { seq: 'desc' }, select: { hash: true } });
+  const entry = {
+    actorId: actor?.id ?? null,
+    actorName: actor?.name ?? 'System',
+    action,
+    entityType,
+    entityId: entityId ?? null,
+    // Normalise (Dates -> ISO strings, drop undefined) so stored == hashed.
+    details: JSON.parse(JSON.stringify(redact(details ?? {}))),
+    prevHash: last?.hash ?? GENESIS,
+    createdAt: new Date(),
+  };
+  entry.hash = digest(entry);
+  await tx.auditLog.create({ data: entry });
+}
+
 /**
- * Append a hash-chained audit entry. An advisory lock serialises writers so
- * the chain never forks. Never throws into the business flow.
+ * Append a hash-chained audit entry. An advisory lock serialises writers so the chain never forks.
+ *
+ *  - { tx }: write inside the caller's transaction. The business change and its audit entry are
+ *    saved together or not at all - used for approvals, payments, policy and rule changes.
+ *  - { strict: true }: write on its own, but fail the request if the entry cannot be written.
+ *  - neither: best effort (logged on failure) - for low-value events such as page views.
  */
-export async function audit(actor, action, entityType, entityId, details = {}) {
+export async function audit(actor, action, entityType, entityId, details = {}, { tx, strict = false } = {}) {
+  if (tx) return writeEntry(tx, actor, action, entityType, entityId, details);
   try {
-    await prisma.$transaction(async (tx) => {
-      await tx.$executeRaw`SELECT pg_advisory_xact_lock(7411)`;
-      const last = await tx.auditLog.findFirst({ orderBy: { seq: 'desc' }, select: { hash: true } });
-      const entry = {
-        actorId: actor?.id ?? null,
-        actorName: actor?.name ?? 'System',
-        action,
-        entityType,
-        entityId: entityId ?? null,
-        // Normalise (Dates -> ISO strings, drop undefined) so stored == hashed.
-        details: JSON.parse(JSON.stringify(details ?? {})),
-        prevHash: last?.hash ?? GENESIS,
-        createdAt: new Date(),
-      };
-      entry.hash = digest(entry);
-      await tx.auditLog.create({ data: entry });
-    });
+    await prisma.$transaction((t) => writeEntry(t, actor, action, entityType, entityId, details));
   } catch (err) {
     console.error('[audit] failed to write entry', action, err.message);
+    if (strict) throw err;
   }
 }
 

@@ -18,7 +18,11 @@ export function FinancePanel({ report, onDone }) {
   const [dialog, setDialog] = useState(null);
   const [busy, setBusy] = useState(false);
   const [sched, setSched] = useState({ method: 'BANK_TRANSFER', scheduledFor: isoDay(new Date(Date.now() + 3 * 86400000)), comment: '' });
-  const [pay, setPay] = useState({ method: report.payment?.method ?? 'BANK_TRANSFER', amount: Number(report.totalBase), paidAt: isoDay(new Date()), reference: '' });
+  const approvedAmount = Number(report.payment?.amount ?? report.totalBase);
+  const [pay, setPay] = useState({ method: report.payment?.method ?? 'BANK_TRANSFER', amount: approvedAmount, paidAt: isoDay(new Date()), reference: '', adjustmentReason: '' });
+  // Server rules: approving an out-of-policy report, or paying a different amount, needs a reason.
+  const override = (report.policyFlags ?? []).some((f) => f.severity === 'violation');
+  const adjusted = Math.abs(Number(pay.amount) - approvedAmount) >= 0.01;
   const [recode, setRecode] = useState({ costCenterId: report.costCenterId ?? '', projectCode: report.projectCode ?? '', lines: Object.fromEntries(report.lines.map((l) => [l.id, l.categoryId])) });
 
   const refresh = () => {
@@ -80,7 +84,7 @@ export function FinancePanel({ report, onDone }) {
         title="Approve & schedule payment"
         description={`${report.code} · ${money(report.totalBase)} to ${report.employee.name}`}
         size="sm"
-        footer={<><button type="button" className="btn-secondary" onClick={() => setDialog(null)}>Cancel</button><button type="button" className="btn-success" disabled={busy} onClick={() => call(`/finance/${report.id}/decide`, { action: 'APPROVE', ...sched, comment: sched.comment || undefined }, 'Payment scheduled')}>{busy && <Spinner />} Schedule</button></>}
+        footer={<><button type="button" className="btn-secondary" onClick={() => setDialog(null)}>Cancel</button><button type="button" className="btn-success" disabled={busy || (override && !sched.comment.trim())} onClick={() => call(`/finance/${report.id}/decide`, { action: 'APPROVE', ...sched, comment: sched.comment || undefined }, 'Payment scheduled')}>{busy && <Spinner />} Schedule</button></>}
       >
         <div className="space-y-4">
           <Field label="Payment method">
@@ -91,7 +95,12 @@ export function FinancePanel({ report, onDone }) {
           <Field label="Scheduled for">
             <input type="date" className="input" value={sched.scheduledFor} onChange={(e) => setSched({ ...sched, scheduledFor: e.target.value })} />
           </Field>
-          <Field label="Note (optional)">
+          <Field
+            className="sm:col-span-2"
+            label={override ? 'Reason for approving despite policy exceptions' : 'Note (optional)'}
+            required={override}
+            hint={override ? 'This report breaks policy. Your reason is kept in the audit trail.' : undefined}
+          >
             <textarea className="input" rows={2} value={sched.comment} onChange={(e) => setSched({ ...sched, comment: e.target.value })} />
           </Field>
         </div>
@@ -103,7 +112,7 @@ export function FinancePanel({ report, onDone }) {
         title="Record payment"
         description="Marks the reimbursement as paid and notifies the employee."
         size="sm"
-        footer={<><button type="button" className="btn-secondary" onClick={() => setDialog(null)}>Cancel</button><button type="button" className="btn-success" disabled={busy || pay.reference.trim().length < 3} onClick={() => call(`/finance/${report.id}/payment`, pay, 'Payment recorded')}>{busy && <Spinner />} Mark as paid</button></>}
+        footer={<><button type="button" className="btn-secondary" onClick={() => setDialog(null)}>Cancel</button><button type="button" className="btn-success" disabled={busy || pay.reference.trim().length < 3 || (adjusted && !pay.adjustmentReason.trim())} onClick={() => call(`/finance/${report.id}/payment`, { ...pay, adjustmentReason: adjusted ? pay.adjustmentReason : undefined }, 'Payment recorded')}>{busy && <Spinner />} Mark as paid</button></>}
       >
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Method">
@@ -120,6 +129,11 @@ export function FinancePanel({ report, onDone }) {
           <Field label="Transaction reference" required hint="UTR / cheque number">
             <input data-autofocus className="input font-mono" value={pay.reference} onChange={(e) => setPay({ ...pay, reference: e.target.value })} placeholder="UTR…" />
           </Field>
+          {adjusted && (
+            <Field className="sm:col-span-2" label="Reason for the different amount" required hint={`Approved amount: ${money(approvedAmount)}. Your reason is kept in the audit trail.`}>
+              <input className="input" maxLength={300} value={pay.adjustmentReason} onChange={(e) => setPay({ ...pay, adjustmentReason: e.target.value })} placeholder="e.g. Partial payment, advance deducted" />
+            </Field>
+          )}
         </div>
       </Modal>
 

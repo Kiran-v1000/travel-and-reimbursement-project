@@ -98,16 +98,22 @@ export async function updateUser(actor, id, data) {
     // Admin reset: temporary password, and every existing session of that user ends.
     Object.assign(patch, { passwordHash: await bcrypt.hash(password, 12), mustChangePassword: true, passwordChangedAt: new Date() });
   }
+  if (managerId !== undefined) rest.managerId = managerId;
+  // Record old and new values for every changed field (never the password itself).
+  const changed = Object.fromEntries(
+    Object.keys(rest).filter((k) => String(existing[k] ?? '') !== String(rest[k] ?? '')).map((k) => [k, { from: existing[k] ?? null, to: rest[k] ?? null }]),
+  );
+  const deactivated = existing.active && rest.active === false;
   await prisma.$transaction(async (tx) => {
     if (Object.keys(patch).length) await tx.user.update({ where: { id }, data: patch });
     // Re-path the user's whole subtree when their manager changes.
     if (managerId !== undefined && managerId !== existing.managerId) await setManager(id, managerId || null, tx);
+    // A deactivated person or a reset password ends every session at once.
+    if (deactivated || password) await tx.session.updateMany({ where: { userId: id, revokedAt: null }, data: { revokedAt: new Date(), revokedReason: deactivated ? 'DEACTIVATED' : 'PASSWORD_RESET' } });
+    await audit(actor, 'user.updated', 'USER', id, { changed, ...(password ? { passwordReset: true } : {}), ...(deactivated ? { sessionsRevoked: true } : {}) }, { tx });
   });
   const user = await prisma.user.findUnique({ where: { id }, select: profileSelect });
   forgetCachedUser(id); // role / active changes apply immediately on this instance
-  if (managerId !== undefined) rest.managerId = managerId;
-  const changed = Object.keys(rest).filter((k) => String(existing[k] ?? '') !== String(rest[k] ?? ''));
-  await audit(actor, 'user.updated', 'USER', id, { changed, ...(password ? { passwordReset: true } : {}) });
   return user;
 }
 
@@ -129,11 +135,17 @@ export async function createDelegation(actor, data) {
   if (new Date(data.endDate) < new Date(data.startDate)) throw badRequest('End date must be after start date');
   const delegate = await prisma.user.findUnique({ where: { id: data.delegateId } });
   if (!delegate?.active) throw badRequest('Delegate must be an active user');
-  const d = await prisma.delegation.create({
-    data: { delegatorId, delegateId: data.delegateId, scope: data.scope, startDate: new Date(data.startDate), endDate: new Date(data.endDate), reason: data.reason },
-    include: { delegator: { select: { id: true, name: true } }, delegate: { select: { id: true, name: true } } },
+  const d = await prisma.$transaction(async (tx) => {
+    const created = await tx.delegation.create({
+      data: { delegatorId, delegateId: data.delegateId, scope: data.scope, startDate: new Date(data.startDate), endDate: new Date(data.endDate), reason: data.reason },
+      include: { delegator: { select: { id: true, name: true } }, delegate: { select: { id: true, name: true } } },
+    });
+    await audit(actor, 'delegation.created', 'DELEGATION', created.id, {
+      delegator: created.delegator.name, delegate: created.delegate.name, scope: created.scope, startDate: created.startDate, endDate: created.endDate,
+      reason: created.reason ?? null, onBehalfOf: delegatorId !== actor.id ? created.delegator.name : null,
+    }, { tx });
+    return created;
   });
-  await audit(actor, 'delegation.created', 'DELEGATION', d.id, { delegator: d.delegator.name, delegate: d.delegate.name, scope: d.scope, startDate: d.startDate, endDate: d.endDate });
   await notify(d.delegateId, {
     type: 'DELEGATION',
     title: `${d.delegator.name} delegated approvals to you`,
@@ -147,7 +159,9 @@ export async function revokeDelegation(actor, id) {
   const d = await prisma.delegation.findUnique({ where: { id } });
   if (!d) throw notFound('Delegation');
   if (d.delegatorId !== actor.id && actor.role !== 'ADMIN') throw forbidden();
-  const updated = await prisma.delegation.update({ where: { id }, data: { revoked: true } });
-  await audit(actor, 'delegation.revoked', 'DELEGATION', id);
-  return updated;
+  return prisma.$transaction(async (tx) => {
+    const updated = await tx.delegation.update({ where: { id }, data: { revoked: true } });
+    await audit(actor, 'delegation.revoked', 'DELEGATION', id, { revoked: { from: d.revoked, to: true }, delegatorId: d.delegatorId, delegateId: d.delegateId }, { tx });
+    return updated;
+  });
 }

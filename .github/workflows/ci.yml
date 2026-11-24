@@ -9,6 +9,12 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+# Least privilege: the build token can read the code and nothing else (no pushes, releases,
+# package publishing or settings changes). The database and JWT values below are throwaway,
+# CI-only values for a disposable container - never production credentials.
+permissions:
+  contents: read
+
 jobs:
   server:
     name: API - migrations, unit and integration tests

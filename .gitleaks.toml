@@ -1,0 +1,15 @@
+# gitleaks configuration: default rules, plus the known throwaway CI-only values below.
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Throwaway values used only by CI's disposable database container and test runs"
+regexes = [
+  '''ci-only-secret-0f3b8c1d9e2a7b6c5d4e3f2a1b0c9d8e''',
+  '''voyage-ci''',
+  '''unit-test-secret-unit-test-secret-0123''',
+]
+paths = [
+  '''server/\.env\.example''',
+  '''client/\.env\.example''',
+]
