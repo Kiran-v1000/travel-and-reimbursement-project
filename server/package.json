@@ -16,12 +16,13 @@
     "db:seed": "node src/db/seeds/seed.js",
     "db:reset": "prisma migrate reset --force",
     "test": "node scripts/run-tests.js src",
-    "test:e2e": "node scripts/run-tests.js tests",
+    "test:e2e": "node scripts/run-tests.js --db tests",
     "db:seed:scale": "node src/db/seeds/scale.js",
     "load:test": "node tests/load/load-test.js",
     "start:cluster": "pm2 start ecosystem.config.cjs --env production",
     "db:seed:prod": "node src/db/seeds/production.js",
-    "load:test:live": "node tests/load/load-test.js --live"
+    "load:test:live": "node tests/load/load-test.js --live",
+    "test:db:reset": "node scripts/test-db.js reset"
   },
   "prisma": {
     "schema": "src/db/schema.prisma",

@@ -62,7 +62,11 @@ Demo accounts (password `Voyage@123`): `rahul@` / `ananya@` / `priya@` (employee
 `vikram@` (director, dept head), `arjun@` (sales head), `asha@` (CEO), `meera@` / `sanjay@` (Finance),
 `auditor@` (read-only) — all `@voyage.io`. Administrator: `admin@utthunga.com` / `admin@123`.
 
-Tests: `npm test` (unit) and `npm run test:e2e` (needs a seeded database) in `server/`.
+Tests, in `server/`:
+
+- `npm test`: unit tests (no database).
+- `npm run test:e2e`: integration tests. They run against their **own database**: your `DATABASE_URL` name plus `_test` (e.g. `travel_reimbursement_test`), created, migrated and seeded automatically. Your working or demo database is never touched, and test receipts go to `uploads-test/`. To use a different test database, set `TEST_DATABASE_URL`; any database whose name does not end in `_test` or `_ci` is refused.
+- `npm run test:db:reset`: rebuild the test database from scratch.
 
 ## Bulk HR import (CSV)
 

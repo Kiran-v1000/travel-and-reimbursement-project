@@ -83,7 +83,8 @@ async function main() {
   await rebuildOrgTree();
 
   const settings = { ...DEFAULT_SETTINGS, fallbackApproverId: divya.id, roleApprovers: { FINANCE: meera.id } };
-  for (const [key, value] of Object.entries(settings)) await prisma.setting.create({ data: { key, value } });
+  // Upsert: some settings are already created by migrations (e.g. retentionAutoPurge).
+  for (const [key, value] of Object.entries(settings)) await prisma.setting.upsert({ where: { key }, create: { key, value }, update: { value } });
 
   console.log('Seeding approval rules...');
   const rules = defaultRules(LEVELS);
