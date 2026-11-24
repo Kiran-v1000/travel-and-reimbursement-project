@@ -152,23 +152,31 @@ export function ApprovalsPage() {
             <div className="border-b border-line p-3">
               <Tabs id="appr-filter" value={filter} onChange={setFilter} tabs={FILTERS.map((f) => ({ ...f, count: f.value === 'all' ? undefined : inbox.filter((s) => (f.value === 'flagged' ? s.entity.flags?.length : f.value === 'delegated' ? s.onBehalfOf : s.entity.type === f.value)).length }))} />
             </div>
-            <ul className="min-h-0 flex-1 overflow-y-auto" role="listbox" aria-label="Pending approvals">
+            {/* A plain list: each row has a checkbox (bulk actions) and a button that opens the
+                request in the review pane - both reachable with Tab. J/K and the arrow keys
+                still move through the list. */}
+            <ul className="min-h-0 flex-1 overflow-y-auto" aria-label="Pending approvals">
               <AnimatePresence initial={false}>
                 {items.map((s) => {
                   const overdue = s.dueAt && new Date(s.dueAt) < new Date();
                   const active = current?.id === s.id;
                   return (
-                    <motion.li key={s.id} layout variants={item} initial="initial" animate="animate" exit="exit" role="option" aria-selected={active}>
-                      <div className={clsx('relative flex cursor-pointer items-start gap-3 border-b border-line/60 px-4 py-3.5 transition-colors', active ? 'bg-brand/[0.06]' : 'hover:bg-subtle/60')} onClick={() => setSelected(s.id)}>
-                        {active && <motion.span layoutId="appr-active" className="absolute inset-y-0 left-0 w-[3px] bg-brand" />}
+                    <motion.li key={s.id} layout variants={item} initial="initial" animate="animate" exit="exit">
+                      <div className={clsx('relative flex items-start gap-3 border-b border-line/60 px-4 py-3.5 transition-colors', active ? 'bg-brand/[0.06]' : 'hover:bg-subtle/60')}>
+                        {active && <motion.span layoutId="appr-active" className="absolute inset-y-0 left-0 w-[3px] bg-brand" aria-hidden />}
                         <input
                           type="checkbox"
                           className="mt-1 h-4 w-4 rounded accent-[rgb(var(--brand))]"
                           checked={checked.has(s.id)}
-                          onClick={(e) => e.stopPropagation()}
                           onChange={() => toggle(s.id)}
-                          aria-label={`Select ${s.entity.code}`}
+                          aria-label={`Select ${s.entity.code} for bulk action`}
                         />
+                        <button
+                          type="button"
+                          onClick={() => setSelected(s.id)}
+                          aria-current={active ? 'true' : undefined}
+                          className="flex min-w-0 flex-1 items-start gap-3 rounded-lg text-left"
+                        >
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2">
                             {s.entity.type === 'TRAVEL' ? <Plane className="h-3.5 w-3.5 shrink-0 text-brand" /> : <Receipt className="h-3.5 w-3.5 shrink-0 text-brand" />}
@@ -182,12 +190,13 @@ export function ApprovalsPage() {
                           </div>
                         </div>
                         <span className="num text-[13px] font-semibold">{money(s.entity.amount)}</span>
+                        </button>
                       </div>
                     </motion.li>
                   );
                 })}
               </AnimatePresence>
-              {!items.length && <p className="p-6 text-center text-[13px] text-muted">Nothing in this filter.</p>}
+              {!items.length && <li className="p-6 text-center text-[13px] text-muted">Nothing in this filter.</li>}
             </ul>
             <p className="hidden items-center gap-1.5 border-t border-line px-4 py-2 text-[11px] text-muted lg:flex">
               <Keyboard className="h-3.5 w-3.5" /> J/K move · A approve · R return · X reject

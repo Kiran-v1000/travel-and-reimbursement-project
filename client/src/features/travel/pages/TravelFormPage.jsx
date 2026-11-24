@@ -245,7 +245,7 @@ export function TravelFormPage() {
       )}
 
       <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
-        <form className="space-y-5" onSubmit={(e) => { e.preventDefault(); run(true); }} noValidate>
+        <form className="min-w-0 space-y-5" onSubmit={(e) => { e.preventDefault(); run(true); }} noValidate>
           <Section step={1} title="Trip details" description="Tell approvers what the trip is for.">
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-2">
@@ -320,7 +320,7 @@ export function TravelFormPage() {
           </Section>
 
           <Section step={3} title="Estimated costs" description="Rough numbers are fine. You will claim actual amounts later.">
-            <div className="mb-4 flex items-center gap-3">
+            <div className="mb-4 flex flex-wrap items-center gap-3">
               <label className="label mb-0" htmlFor="currency">Currency</label>
               <select id="currency" className="input h-9 w-40" value={form.currency} onChange={set('currency')}>
                 {(ref?.currencies ?? [{ code: 'INR', name: 'Indian Rupee' }]).map((c) => (
@@ -382,7 +382,7 @@ export function TravelFormPage() {
           </Section>
         </form>
 
-        <aside className="lg:sticky lg:top-24 lg:self-start">
+        <aside aria-label="Trip summary" className="min-w-0 lg:sticky lg:top-24 lg:self-start">
           <div className="card overflow-hidden">
             <div className="relative overflow-hidden bg-gradient-to-br from-indigo-600 via-indigo-500 to-violet-500 p-5 text-white">
               <div className="absolute -right-10 -top-10 h-36 w-36 rounded-full bg-white/10 blur-xl" />

@@ -42,14 +42,14 @@ export function OrgTab() {
   return (
     <div className="space-y-6">
       <section className="card overflow-hidden">
-        <div className="border-b border-line px-5 py-4"><h3 className="text-[14.5px] font-semibold">Exchange rates</h3><p className="text-[12.5px] text-muted">Administrator-entered rates. Each expense line stores the rate and date it used.</p></div>
+        <div className="border-b border-line px-5 py-4"><h2 className="text-[14.5px] font-semibold">Exchange rates</h2><p className="text-[12.5px] text-muted">Administrator-entered rates. Each expense line stores the rate and date it used.</p></div>
         <div className="overflow-x-auto"><table className="w-full text-[13px]"><tbody>{currencies.map((c) => <CurrencyRow key={`${c.code}-${c.updatedAt}`} c={c} />)}</tbody></table></div>
       </section>
       <div className="grid gap-6 lg:grid-cols-2">
         {[['Departments', depts, 'dept'], ['Cost centers', ccs, 'cc']].map(([title, rows, kind]) => (
           <section key={kind} className="card overflow-hidden">
             <div className="flex items-center justify-between border-b border-line px-5 py-4">
-              <h3 className="text-[14.5px] font-semibold">{title}</h3>
+              <h2 className="text-[14.5px] font-semibold">{title}</h2>
               <button type="button" className="btn-secondary h-8" onClick={() => setEdit({ kind, code: '', name: '', headId: '' })}><Plus className="h-3.5 w-3.5" /> Add</button>
             </div>
             <ul>

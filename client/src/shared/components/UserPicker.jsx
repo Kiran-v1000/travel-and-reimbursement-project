@@ -63,6 +63,8 @@ export function UserPicker({ value, onChange, placeholder = 'Search by name, ema
               className="input pl-9 pr-9"
               placeholder={placeholder}
               value={term}
+              // Focus moves into the search box only after the person chose to change the value.
+              // eslint-disable-next-line jsx-a11y/no-autofocus
               autoFocus={open && !!current}
               onFocus={() => setOpen(true)}
               onChange={(e) => { setTerm(e.target.value); setOpen(true); }}

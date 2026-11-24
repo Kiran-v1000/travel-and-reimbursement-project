@@ -9,13 +9,13 @@
   --subtle: 241 243 249;
   --line: 226 230 240;
   --ink: 15 23 42;
-  --muted: 92 102 123;
-  --brand: 79 70 229;
+  --muted: 86 95 114;
+  --brand: 77 68 222;
   --brand-soft: 238 240 255;
   --brand-ink: 67 56 202;
-  --ok: 21 128 61;
-  --warn: 180 83 9;
-  --bad: 200 30 30;
+  --ok: 18 108 51;
+  --warn: 151 70 8;
+  --bad: 180 27 27;
   --info: 29 78 216;
   color-scheme: light;
 }
@@ -50,6 +50,12 @@
     outline: 2px solid rgb(var(--brand));
     outline-offset: 2px;
     border-radius: 6px;
+  }
+  /* Headings and <main> receive focus only programmatically (page change, skip link):
+     announce them, but don't draw a ring around non-interactive text. */
+  h1[tabindex='-1']:focus,
+  main[tabindex='-1']:focus {
+    outline: none;
   }
   ::selection {
     background: rgb(var(--brand) / 0.2);

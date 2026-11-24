@@ -79,6 +79,8 @@ jobs:
           cache: npm
           cache-dependency-path: client/package-lock.json
       - run: npm ci
+      - name: Accessibility lint (jsx-a11y)
+        run: npm run lint:a11y
       - run: npm run build
       - name: Dependency audit (production packages)
         run: npm audit --omit=dev --audit-level=high

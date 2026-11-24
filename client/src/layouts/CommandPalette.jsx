@@ -55,6 +55,10 @@ export function CommandPalette() {
   useEffect(() => {
     setActive(0);
   }, [q]);
+  // Keep the highlighted result visible while moving through a long list with the arrow keys.
+  useEffect(() => {
+    if (open) document.getElementById(`palette-opt-${active}`)?.scrollIntoView({ block: 'nearest' });
+  }, [active, open]);
 
   const go = (item) => {
     setPalette(false);
@@ -85,20 +89,40 @@ export function CommandPalette() {
           >
             <div className="flex items-center gap-3 border-b border-line px-4">
               <Search className="h-4 w-4 text-muted" />
-              <input ref={input} value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={onKey} placeholder="Search or jump to…" className="h-14 flex-1 bg-transparent text-[15px] outline-none placeholder:text-muted/70" aria-label="Search" />
+              {/* ARIA combobox: focus stays in the input; the highlighted result is announced via
+                  aria-activedescendant, so the options themselves hold no focusable controls. */}
+              <input
+                ref={input}
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                onKeyDown={onKey}
+                placeholder="Search or jump to…"
+                className="h-14 flex-1 bg-transparent text-[15px] outline-none placeholder:text-muted/70"
+                aria-label="Search or jump to"
+                role="combobox"
+                aria-expanded={items.length > 0}
+                aria-controls="palette-results"
+                aria-autocomplete="list"
+                aria-activedescendant={items[active] ? `palette-opt-${active}` : undefined}
+              />
               <kbd className="rounded-md border border-line bg-subtle px-1.5 py-0.5 text-[10.5px] text-muted">Esc</kbd>
             </div>
-            <ul className="max-h-[50vh] overflow-y-auto p-2" role="listbox">
-              {items.length === 0 && <li className="px-3 py-8 text-center text-[13px] text-muted">No matches for “{q}”.</li>}
+            {items.length === 0 && <p role="status" className="px-3 py-8 text-center text-[13px] text-muted">No matches for “{q}”.</p>}
+            <ul id="palette-results" className="max-h-[50vh] overflow-y-auto p-2 empty:hidden" role="listbox" aria-label="Results">
               {items.map((it, i) => (
-                <li key={`${it.kind}-${it.to}-${i}`} role="option" aria-selected={i === active}>
-                  <button
-                    type="button"
-                    onMouseEnter={() => setActive(i)}
-                    onClick={() => go(it)}
-                    className={clsx('flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-colors', i === active ? 'bg-brand/[0.08]' : 'hover:bg-subtle')}
-                  >
-                    <span className={clsx('flex h-8 w-8 items-center justify-center rounded-lg', i === active ? 'bg-brand text-white dark:text-slate-950' : 'bg-subtle text-muted')}>
+                // Keyboard users drive the options from the combobox input (arrows + Enter, via
+                // aria-activedescendant); the click handler is for mouse/touch only.
+                // eslint-disable-next-line jsx-a11y/click-events-have-key-events
+                <li
+                  key={`${it.kind}-${it.to}-${i}`}
+                  id={`palette-opt-${i}`}
+                  role="option"
+                  aria-selected={i === active}
+                  onMouseEnter={() => setActive(i)}
+                  onClick={() => go(it)}
+                  className={clsx('flex w-full cursor-pointer items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-colors', i === active ? 'bg-brand/[0.08]' : 'hover:bg-subtle')}
+                >
+                    <span aria-hidden className={clsx('flex h-8 w-8 items-center justify-center rounded-lg', i === active ? 'bg-brand text-white dark:text-slate-950' : 'bg-subtle text-muted')}>
                       <it.icon className="h-4 w-4" />
                     </span>
                     <span className="min-w-0 flex-1">
@@ -106,8 +130,7 @@ export function CommandPalette() {
                       {it.hint && <span className="block truncate text-[11.5px] text-muted">{it.hint}</span>}
                     </span>
                     {it.status && <StatusChip status={it.status} size="sm" />}
-                    {i === active && (it.kind === 'record' ? <ArrowRight className="h-4 w-4 text-brand" /> : <CornerDownLeft className="h-4 w-4 text-brand" />)}
-                  </button>
+                    {i === active && (it.kind === 'record' ? <ArrowRight className="h-4 w-4 text-brand" aria-hidden /> : <CornerDownLeft className="h-4 w-4 text-brand" aria-hidden />)}
                 </li>
               ))}
             </ul>

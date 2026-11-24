@@ -89,7 +89,7 @@ export function CompliancePage() {
         <section className="card overflow-hidden">
           <div className="flex flex-wrap items-center gap-3 border-b border-line px-5 py-4">
             <div className="min-w-0 flex-1">
-              <h3 className="text-[14.5px] font-semibold">Purge runs</h3>
+              <h2 className="text-[14.5px] font-semibold">Purge runs</h2>
               <p className="text-[12.5px] text-muted">Codes, dates, amounts and payments are kept so totals and the audit trail still add up.</p>
             </div>
             {isAdmin && (

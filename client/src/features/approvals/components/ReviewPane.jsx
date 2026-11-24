@@ -49,7 +49,8 @@ export function ReviewPane({ step, onDecide }) {
         )}
       </div>
 
-      <div className="min-h-0 flex-1 space-y-5 overflow-y-auto p-5">
+      {/* Focusable so keyboard users can scroll the details with the arrow keys. */}
+      <div className="min-h-0 flex-1 space-y-5 overflow-y-auto p-5" tabIndex={0} role="region" aria-label={`Details of ${e.code}`}>
         {isLoading || !data ? (
           <div className="space-y-3">
             <Skeleton className="h-16" />

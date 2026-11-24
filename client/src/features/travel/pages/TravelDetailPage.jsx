@@ -115,7 +115,7 @@ export function TravelDetailPage() {
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[1.45fr_1fr]">
-        <div className="space-y-6">
+        <div className="min-w-0 space-y-6">
           <motion.section initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, ease }} className="card p-5 md:p-6">
             <h2 className="mb-4 text-[15px] font-semibold">Trip summary</h2>
             <dl className="grid gap-4 sm:grid-cols-2">
@@ -195,7 +195,7 @@ export function TravelDetailPage() {
           )}
         </div>
 
-        <section className="card self-start p-5 md:p-6 xl:sticky xl:top-24">
+        <section className="card min-w-0 self-start p-5 md:p-6 xl:sticky xl:top-24">
           <Tabs
             id="travel-detail"
             className="mb-5"

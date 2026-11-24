@@ -9,6 +9,11 @@ import { ease } from '../../lib/motion.js';
 export function Modal({ open, onClose, title, description, children, footer, size = 'md', variant = 'center' }) {
   const panel = useRef(null);
   const last = useRef(null);
+  // Callers often pass a new onClose function on every render. Keep the latest one in a ref so
+  // the setup below runs only when the dialog opens/closes - otherwise every re-render would
+  // move focus back to the page and then to the first field again.
+  const closeRef = useRef(onClose);
+  closeRef.current = onClose;
 
   useEffect(() => {
     if (!open) return undefined;
@@ -18,7 +23,7 @@ export function Modal({ open, onClose, title, description, children, footer, siz
       (first ?? panel.current)?.focus();
     }, 30);
     const onKey = (e) => {
-      if (e.key === 'Escape') onClose?.();
+      if (e.key === 'Escape') closeRef.current?.();
       if (e.key === 'Tab' && panel.current) {
         const f = [...panel.current.querySelectorAll('a[href], button:not([disabled]), input, textarea, select, [tabindex]:not([tabindex="-1"])')];
         if (!f.length) return;
@@ -35,7 +40,7 @@ export function Modal({ open, onClose, title, description, children, footer, siz
       document.body.style.overflow = '';
       last.current?.focus?.();
     };
-  }, [open, onClose]);
+  }, [open]);
 
   const drawer = variant === 'drawer';
   const widths = { sm: 'max-w-md', md: 'max-w-lg', lg: 'max-w-2xl', xl: 'max-w-4xl' };

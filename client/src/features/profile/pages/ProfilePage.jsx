@@ -52,8 +52,7 @@ export function ProfilePage() {
             [Briefcase, 'Cost center', user.costCenter ? `${user.costCenter.code} · ${user.costCenter.name}` : '—'], [UserCheck, 'Reports to', user.manager?.name ?? '—'], [MapPin, 'Location', user.location ?? '—'],
           ].map(([Icon, k, v]) => (
             <div key={k} className="flex items-center gap-3">
-              <Icon className="h-4 w-4 text-muted" />
-              <dt className="w-28 text-muted">{k}</dt>
+              <dt className="flex w-36 shrink-0 items-center gap-3 text-muted"><Icon className="h-4 w-4" aria-hidden />{k}</dt>
               <dd className="font-medium">{v}</dd>
             </div>
           ))}

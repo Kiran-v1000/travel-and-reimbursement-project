@@ -50,7 +50,7 @@ export function NotificationBell() {
         <Bell className="h-[18px] w-[18px]" />
         <AnimatePresence>
           {unread > 0 && (
-            <motion.span initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }} className="num absolute right-1 top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-bad px-1 text-[10px] font-bold text-white ring-2 ring-surface">
+            <motion.span initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }} className="num absolute right-1 top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-bad px-1 text-[10px] font-bold text-white ring-2 ring-surface dark:text-slate-950">
               {unread > 9 ? '9+' : unread}
             </motion.span>
           )}
@@ -81,10 +81,10 @@ export function NotificationBell() {
                       <span className="min-w-0 flex-1">
                         <span className="flex items-start gap-2">
                           <span className="flex-1 text-[13px] font-medium leading-snug">{n.title}</span>
-                          {!n.read && <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-brand" aria-label="Unread" />}
+                          {!n.read && <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-brand"><span className="sr-only">Unread</span></span>}
                         </span>
                         <span className="mt-0.5 line-clamp-2 block text-[12px] text-muted">{n.body}</span>
-                        <span className="mt-1 block text-[11px] text-muted/80">{ago(n.createdAt)}</span>
+                        <span className="mt-1 block text-[11px] text-muted">{ago(n.createdAt)}</span>
                       </span>
                     </button>
                   );

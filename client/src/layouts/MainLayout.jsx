@@ -1,5 +1,7 @@
 import { Suspense, useEffect, useRef, useState } from 'react';
 import { NavLink, Link, useLocation, useNavigate, useOutlet } from 'react-router-dom';
+import { PageErrorBoundary } from '../shared/components/PageErrorBoundary.jsx';
+import { useDialogFocus } from '../shared/hooks/useDialogFocus.js';
 import { AnimatePresence, motion } from 'framer-motion';
 import clsx from 'clsx';
 import { Plane, Receipt, Search, Plus, Moon, Sun, Menu, X, LogOut, UserCircle2, ChevronDown, UserCheck } from 'lucide-react';
@@ -79,7 +81,7 @@ function NewMenu() {
   return (
     <div className="relative" ref={ref}>
       <button type="button" className="btn-primary h-9" onClick={() => setOpen((o) => !o)} aria-expanded={open}>
-        <Plus className="h-4 w-4" /> <span className="hidden sm:inline">New</span>
+        <Plus className="h-4 w-4" aria-hidden /> <span className="sr-only sm:not-sr-only">New</span>
       </button>
       <AnimatePresence>
         {open && (
@@ -154,10 +156,40 @@ export function MainLayout({ fallback }) {
   const location = useLocation();
   const outlet = useOutlet();
   const navigate = useNavigate();
+  const drawer = useDialogFocus(sidebarOpen, () => setSidebar(false));
 
   useEffect(() => {
     setSidebar(false);
   }, [location.pathname, setSidebar]);
+
+  // After each page change: name the browser tab after the page (WCAG 2.4.2) and, on in-app
+  // navigation, move focus to the page heading so screen readers announce the new page.
+  // Detail pages render their heading after data loads, so wait for it (up to 3 s).
+  const firstPage = useRef(true);
+  useEffect(() => {
+    let tries = 0;
+    let timer;
+    // The previous page stays on screen while it animates out: wait for a heading that was not
+    // there when the navigation started.
+    const previous = document.querySelector('main h1');
+    const settle = () => {
+      const found = document.querySelector('main h1');
+      const h1 = found && found !== previous && found.isConnected ? found : null;
+      if (!h1 && tries++ < 12) { timer = setTimeout(settle, 250); return; }
+      // Gave up waiting for a new heading: name the tab after whatever heading is there.
+      const titled = h1 ?? found;
+      const name = titled?.dataset.pageTitle || titled?.textContent?.trim();
+      document.title = name ? `${name} · Voyage` : 'Voyage · Travel & Reimbursement';
+      if (firstPage.current) { firstPage.current = false; return; }
+      // Leave focus alone if the page already moved it (e.g. a form focusing its first field).
+      if (h1 && (document.activeElement === document.body || document.activeElement?.closest('nav, aside, header'))) {
+        h1.setAttribute('tabindex', '-1');
+        h1.focus({ preventScroll: true });
+      }
+    };
+    timer = setTimeout(settle, 300);
+    return () => clearTimeout(timer);
+  }, [location.pathname]);
   useHotkeys({ 'mod+k': () => setPalette(true), '/': () => setPalette(true), n: () => navigate('/expenses/new'), t: () => navigate('/travel/new') }, [navigate]);
 
   return (
@@ -166,7 +198,7 @@ export function MainLayout({ fallback }) {
         Skip to content
       </a>
 
-      <aside className="fixed inset-y-0 left-0 z-30 hidden w-[248px] border-r border-line bg-bg/80 backdrop-blur-xl lg:block">
+      <aside aria-label="Sidebar" className="fixed inset-y-0 left-0 z-30 hidden w-[248px] border-r border-line bg-bg/80 backdrop-blur-xl lg:block">
         <Sidebar />
       </aside>
 
@@ -174,7 +206,12 @@ export function MainLayout({ fallback }) {
         {sidebarOpen && (
           <div className="fixed inset-0 z-50 lg:hidden">
             <motion.div className="absolute inset-0 bg-slate-950/40" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setSidebar(false)} />
-            <motion.aside
+            <motion.div
+              ref={drawer}
+              id="mobile-menu"
+              role="dialog"
+              aria-modal="true"
+              aria-label="Menu"
               initial={{ x: -280 }}
               animate={{ x: 0 }}
               exit={{ x: -280 }}
@@ -185,7 +222,7 @@ export function MainLayout({ fallback }) {
                 <X className="h-4 w-4" />
               </button>
               <Sidebar onNavigate={() => setSidebar(false)} />
-            </motion.aside>
+            </motion.div>
           </div>
         )}
       </AnimatePresence>
@@ -193,7 +230,7 @@ export function MainLayout({ fallback }) {
       <div className="lg:pl-[248px]">
         <header className="sticky top-0 z-20 border-b border-line/70 bg-bg/75 backdrop-blur-xl">
           <div className="mx-auto flex h-16 max-w-[1320px] items-center gap-2 px-4 sm:gap-3 sm:px-6 lg:px-8">
-            <button type="button" className="btn-ghost h-9 w-9 px-0 lg:hidden" onClick={() => setSidebar(true)} aria-label="Open menu">
+            <button type="button" className="btn-ghost h-9 w-9 px-0 lg:hidden" onClick={() => setSidebar(true)} aria-label="Open menu" aria-expanded={sidebarOpen} aria-controls="mobile-menu">
               <Menu className="h-5 w-5" />
             </button>
             <button
@@ -234,10 +271,12 @@ export function MainLayout({ fallback }) {
           </div>
         )}
 
-        <main id="main" className="mx-auto max-w-[1320px] px-4 pb-16 pt-6 sm:px-6 lg:px-8 lg:pt-8">
+        <main id="main" tabIndex={-1} className="outline-none mx-auto max-w-[1320px] px-4 pb-16 pt-6 sm:px-6 lg:px-8 lg:pt-8">
           <AnimatePresence mode="wait" initial={false}>
             <motion.div key={location.pathname} {...page}>
-              <Suspense fallback={fallback}>{outlet}</Suspense>
+              <PageErrorBoundary resetKey={location.pathname}>
+                <Suspense fallback={fallback}>{outlet}</Suspense>
+              </PageErrorBoundary>
             </motion.div>
           </AnimatePresence>
         </main>

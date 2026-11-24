@@ -114,7 +114,7 @@ function Simulator() {
   const sim = useMutation({ mutationFn: () => adminApi.simulate({ ...s, amount: Number(s.amount) }), onError: (e) => toast.error(e.message) });
   return (
     <section className="card p-5">
-      <h3 className="flex items-center gap-2 text-[14.5px] font-semibold"><FlaskConical className="h-4 w-4 text-brand" /> Test the routing</h3>
+      <h2 className="flex items-center gap-2 text-[14.5px] font-semibold"><FlaskConical className="h-4 w-4 text-brand" /> Test the routing</h2>
       <p className="mb-4 text-[12.5px] text-muted">Pick a person and an amount to see exactly who would approve it.</p>
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
         <UserPicker className="xl:col-span-2" value={s.userId || null} onChange={(id) => setS({ ...s, userId: id ?? '' })} placeholder="Search employee…" ariaLabel="Employee" />
@@ -144,7 +144,7 @@ export function RulesTab() {
       <Simulator />
       <section className="card overflow-hidden">
         <div className="flex items-center justify-between border-b border-line px-5 py-4">
-          <div><h3 className="text-[14.5px] font-semibold">Routing rules</h3><p className="text-[12.5px] text-muted">Change routing by amount, organisation or trip type without code changes. Every edit creates a new version.</p></div>
+          <div><h2 className="text-[14.5px] font-semibold">Routing rules</h2><p className="text-[12.5px] text-muted">Change routing by amount, organisation or trip type without code changes. Every edit creates a new version.</p></div>
           <button type="button" className="btn-primary" onClick={() => setEdit({ open: true, rule: null })}><Plus className="h-4 w-4" /> New rule</button>
         </div>
         {isLoading ? <SkeletonRows /> : ['TRAVEL', 'EXPENSE'].map((type) => (

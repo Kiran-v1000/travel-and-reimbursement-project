@@ -43,7 +43,7 @@ export function PolicyTab() {
     <div className="space-y-6">
       <section className="card p-5">
         <div className="mb-4 flex items-center justify-between">
-          <div><h3 className="text-[14.5px] font-semibold">Travel & claim policy</h3><p className="text-[12.5px] text-muted">These limits drive the live policy checks employees see.</p></div>
+          <div><h2 className="text-[14.5px] font-semibold">Travel & claim policy</h2><p className="text-[12.5px] text-muted">These limits drive the live policy checks employees see.</p></div>
           <button type="button" className="btn-primary" onClick={() => save.mutate()} disabled={save.isPending}>{save.isPending ? <Spinner /> : <Save className="h-4 w-4" />} Save policy</button>
         </div>
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
@@ -69,12 +69,12 @@ export function PolicyTab() {
 
       <section className="card overflow-hidden">
         <div className="flex items-center justify-between border-b border-line px-5 py-4">
-          <h3 className="text-[14.5px] font-semibold">Expense categories</h3>
+          <h2 className="text-[14.5px] font-semibold">Expense categories</h2>
           <button type="button" className="btn-secondary" onClick={() => setCat({ code: '', name: '', icon: 'receipt', perItemLimit: '', receiptThreshold: 500, glAccount: '', active: true })}><Plus className="h-4 w-4" /> Add category</button>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-[13px]">
-            <thead><tr className="bg-subtle/50 text-left text-[11px] uppercase tracking-wide text-muted"><th className="px-5 py-2.5 font-semibold">Category</th><th className="px-3 py-2.5 text-right font-semibold">Per-item limit</th><th className="px-3 py-2.5 text-right font-semibold">Receipt above</th><th className="px-3 py-2.5 font-semibold">Ledger</th><th className="px-3 py-2.5 font-semibold">Status</th><th /></tr></thead>
+            <thead><tr className="bg-subtle/50 text-left text-[11px] uppercase tracking-wide text-muted"><th className="px-5 py-2.5 font-semibold">Category</th><th className="px-3 py-2.5 text-right font-semibold">Per-item limit</th><th className="px-3 py-2.5 text-right font-semibold">Receipt above</th><th className="px-3 py-2.5 font-semibold">Ledger</th><th className="px-3 py-2.5 font-semibold">Status</th><th><span className="sr-only">Actions</span></th></tr></thead>
             <tbody>
               {cats.map((c) => (
                 <tr key={c.id} className="table-row border-t border-line/60">

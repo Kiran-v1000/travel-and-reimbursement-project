@@ -37,7 +37,7 @@ export function DashboardPage() {
         <div className="relative flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
           <div>
             <p className="kicker">{new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
-            <h1 className="mt-1.5 text-[26px] font-semibold tracking-tight md:text-[30px]">
+            <h1 data-page-title="Home" className="mt-1.5 text-[26px] font-semibold tracking-tight md:text-[30px]">
               {greeting()}, {user?.name.split(' ')[0]}
             </h1>
             <p className="mt-1 text-[14px] text-muted">

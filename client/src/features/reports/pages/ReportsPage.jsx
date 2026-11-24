@@ -100,7 +100,9 @@ export function ReportsPage() {
 
           <div className="grid gap-6 xl:grid-cols-[1.4fr_1fr]">
             <Panel title="Spend by month">
-              <div className="h-[260px]">
+              {/* Screen readers get the figures as text; the drawing itself is hidden from them. */}
+              <div className="h-[260px]" role="img" aria-label={`Spend by month: ${a.byMonth.map((m) => `${new Date(`${m.label}-01`).toLocaleDateString('en-IN', { month: 'long' })} ${money(m.total)}`).join(', ') || 'no spend in this period'}`}>
+                <div className="h-full" aria-hidden="true">
                 <ResponsiveContainer>
                   <BarChart data={a.byMonth} margin={{ left: -8, right: 4 }}>
                     <CartesianGrid vertical={false} stroke="rgb(var(--line))" strokeDasharray="3 4" />
@@ -110,14 +112,16 @@ export function ReportsPage() {
                     <Bar dataKey="total" fill="rgb(var(--brand))" radius={[8, 8, 0, 0]} maxBarSize={44} animationDuration={800} />
                   </BarChart>
                 </ResponsiveContainer>
+                </div>
               </div>
             </Panel>
             <Panel title="By category" action={<button type="button" className="btn-ghost h-8 text-[12px]" onClick={() => exp('categories')}><Download className="h-3.5 w-3.5" /> CSV</button>}>
               <div className="flex items-center gap-4">
-                <div className="h-[200px] w-[200px] shrink-0">
+                {/* Decorative: the legend next to it lists every category with its amount. */}
+                <div className="h-[200px] w-[200px] shrink-0" aria-hidden="true">
                   <ResponsiveContainer>
                     <PieChart>
-                      <Pie data={a.byCategory} dataKey="total" nameKey="label" innerRadius={58} outerRadius={92} paddingAngle={2} stroke="none" animationDuration={800}>
+                      <Pie rootTabIndex={-1} data={a.byCategory} dataKey="total" nameKey="label" innerRadius={58} outerRadius={92} paddingAngle={2} stroke="none" animationDuration={800}>
                         {a.byCategory.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
                       </Pie>
                       <Tooltip content={<Tip />} />

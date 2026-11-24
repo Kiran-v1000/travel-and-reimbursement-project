@@ -122,7 +122,7 @@ export function ExpenseDetailPage() {
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[1.55fr_1fr]">
-        <div className="space-y-6">
+        <div className="min-w-0 space-y-6">
           <section className="card overflow-hidden">
             <div className="flex items-center justify-between border-b border-line px-5 py-4">
               <div>
@@ -226,7 +226,7 @@ export function ExpenseDetailPage() {
           )}
         </div>
 
-        <div className="space-y-6 xl:sticky xl:top-24 xl:self-start">
+        <div className="min-w-0 space-y-6 xl:sticky xl:top-24 xl:self-start">
           {editable && (
             <section className="card p-5">
               <div className="mb-3 flex items-center justify-between">

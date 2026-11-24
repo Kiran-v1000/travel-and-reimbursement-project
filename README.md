@@ -72,7 +72,7 @@ Sample files are in [`samples/`](samples): `employees-10000.csv` is a 10,000-per
 
 ## Built for 100,000 people
 
-The app is load-tested with 100,011 users and about 1.5 million records. Everyday screens answer in about 100 to 170 ms (median) with zero errors under load. See [docs/SCALING.md](docs/SCALING.md) for the results, the design and the production sizing.
+The app is load-tested with 100,011 users and about 1.5 million records. Everyday screens answer in about 100 to 170 ms (median) with zero errors under load. See [docs/SCALING.md](docs/SCALING.md) for the results, the design and the production sizing. Accessibility (WCAG 2.2 AA) is covered in [docs/ACCESSIBILITY.md](docs/ACCESSIBILITY.md).
 
 ## Deploying on Linux
 
