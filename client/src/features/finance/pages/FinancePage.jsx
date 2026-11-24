@@ -37,7 +37,7 @@ export function FinancePage() {
 
       <motion.div variants={list} initial="initial" animate="animate" className="mb-6 grid gap-4 sm:grid-cols-3">
         {kpis.map((k) => (
-          <motion.div key={k.label} variants={item} className="card flex items-center gap-4 p-5">
+          <motion.div key={k.label} variants={item} className="card flex min-w-0 items-center gap-3 p-4 sm:gap-4 sm:p-5">
             <span className={`flex h-11 w-11 items-center justify-center rounded-2xl ${k.tone}`}><k.icon className="h-5 w-5" /></span>
             <div>
               <p className="text-[12.5px] text-muted">{k.label} · {k.count}</p>
@@ -52,7 +52,7 @@ export function FinancePage() {
           <Tabs id="fin-tabs" value={tab} onChange={setTab} tabs={[{ value: 'queue', label: 'Review queue', count: queue.total }, { value: 'scheduled', label: 'Scheduled', count: scheduled.total }, { value: 'paid', label: 'Paid' }]} />
           {tab === 'queue' && (
             <label className="flex items-center gap-2 text-[12.5px] sm:ml-auto">
-              <input type="checkbox" className="h-4 w-4 accent-[rgb(var(--brand))]" checked={flagged} onChange={(e) => setFlagged(e.target.checked)} />
+              <input type="checkbox" className="h-4 w-4 shrink-0 accent-[rgb(var(--brand))]" checked={flagged} onChange={(e) => setFlagged(e.target.checked)} />
               Only reports with policy exceptions
             </label>
           )}

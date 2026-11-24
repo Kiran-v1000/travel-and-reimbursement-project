@@ -244,7 +244,7 @@ export function TravelFormPage() {
         </div>
       )}
 
-      <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
+      <div className="grid gap-6 xl:grid-cols-[1fr_340px]">
         <form className="min-w-0 space-y-5" onSubmit={(e) => { e.preventDefault(); run(true); }} noValidate>
           <Section step={1} title="Trip details" description="Tell approvers what the trip is for.">
             <div className="space-y-4">
@@ -297,9 +297,9 @@ export function TravelFormPage() {
                 <div className="flex min-h-10 flex-wrap items-center gap-1.5 rounded-xl border border-line bg-surface p-1.5 focus-within:border-brand focus-within:ring-4 focus-within:ring-brand/15">
                   <AnimatePresence initial={false}>
                     {form.travelers.map((t) => (
-                      <motion.span key={t} initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.8, opacity: 0 }} className="inline-flex items-center gap-1 rounded-lg bg-brand-soft py-1 pl-2.5 pr-1 text-[12.5px] font-medium text-brand-ink">
+                      <motion.span key={t} initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.8, opacity: 0 }} className="inline-flex items-center gap-1 rounded-lg bg-brand-soft py-0.5 pl-2.5 pr-0.5 text-[12.5px] font-medium text-brand-ink">
                         {t}
-                        <button type="button" onClick={() => set('travelers')(form.travelers.filter((x) => x !== t))} className="rounded p-0.5 hover:bg-brand/15" aria-label={`Remove ${t}`}>
+                        <button type="button" onClick={() => set('travelers')(form.travelers.filter((x) => x !== t))} className="flex h-6 w-6 items-center justify-center rounded-md hover:bg-brand/15" aria-label={`Remove ${t}`}>
                           <X className="h-3 w-3" />
                         </button>
                       </motion.span>
@@ -382,7 +382,7 @@ export function TravelFormPage() {
           </Section>
         </form>
 
-        <aside aria-label="Trip summary" className="min-w-0 lg:sticky lg:top-24 lg:self-start">
+        <aside aria-label="Trip summary" className="min-w-0 xl:sticky xl:top-24 xl:self-start">
           <div className="card overflow-hidden">
             <div className="relative overflow-hidden bg-gradient-to-br from-indigo-600 via-indigo-500 to-violet-500 p-5 text-white">
               <div className="absolute -right-10 -top-10 h-36 w-36 rounded-full bg-white/10 blur-xl" />
@@ -398,7 +398,7 @@ export function TravelFormPage() {
             </div>
             <div className="space-y-5 p-5">
               <div>
-                <div className="mb-2 flex items-center justify-between">
+                <div className="mb-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
                   <span className="kicker">Policy check</span>
                   {checking && <Spinner className="h-3.5 w-3.5 text-muted" />}
                 </div>

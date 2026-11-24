@@ -130,9 +130,44 @@ export function AnimatedNumber({ value, format = (n) => Math.round(n).toLocaleSt
 export const Money = ({ value, currency = 'INR', className }) => <span className={clsx('num', className)}>{money(value, currency)}</span>;
 
 /** Pill tabs with a sliding indicator. */
-export function Tabs({ tabs, value, onChange, id = 'tabs', className }) {
+/**
+ * When tabs do not fit (phones), the strip scrolls sideways. Fade the edge that has more tabs
+ * behind it, so people can see there is more to swipe to, and keep the selected tab in view.
+ */
+function useScrollHint(ref, value) {
+  const [edges, setEdges] = useState({ left: false, right: false });
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return undefined;
+    const update = () => setEdges({ left: el.scrollLeft > 2, right: el.scrollLeft + el.clientWidth < el.scrollWidth - 2 });
+    update();
+    el.addEventListener('scroll', update, { passive: true });
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => {
+      el.removeEventListener('scroll', update);
+      ro.disconnect();
+    };
+  }, [ref]);
+  useEffect(() => {
+    const el = ref.current;
+    const active = el?.querySelector('[aria-selected="true"]');
+    if (el && active && el.scrollWidth > el.clientWidth) {
+      el.scrollTo({ left: active.offsetLeft - (el.clientWidth - active.offsetWidth) / 2, behavior: 'smooth' });
+    }
+  }, [ref, value]);
+  if (!edges.left && !edges.right) return undefined;
+  const l = edges.left ? 'transparent, black 28px' : 'black';
+  const r = edges.right ? 'black calc(100% - 28px), transparent' : 'black';
+  const mask = `linear-gradient(to right, ${l}, ${r})`;
+  return { maskImage: mask, WebkitMaskImage: mask };
+}
+
+export function Tabs({ tabs, value, onChange, id = 'tabs', className, wrap = false }) {
+  const strip = useRef(null);
+  const fade = useScrollHint(strip, value);
   return (
-    <div role="tablist" className={clsx('inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-xl bg-subtle p-1', className)}>
+    <div ref={strip} style={wrap ? undefined : fade} role="tablist" className={clsx('inline-flex max-w-full items-center gap-1 rounded-xl bg-subtle p-1', wrap ? 'flex-wrap' : 'overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden', className)}>
       {tabs.map((t) => {
         const active = t.value === value;
         return (
@@ -175,6 +210,7 @@ export function LoadMore({ shown, total, hasMore, loading, onMore, noun = 'items
   );
 }
 
+/** A choice between a few options. Wraps onto a second line when space is short (no sideways scrolling). */
 export function Segmented({ options, value, onChange }) {
-  return <Tabs tabs={options} value={value} onChange={onChange} id={`seg-${options.map((o) => o.value).join('')}`} />;
+  return <Tabs wrap tabs={options} value={value} onChange={onChange} id={`seg-${options.map((o) => o.value).join('')}`} />;
 }

@@ -60,13 +60,13 @@ export function DashboardPage() {
       </div>
 
       {isLoading ? (
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
           {[0, 1, 2, 3].map((i) => (
             <Skeleton key={i} className="h-[132px] rounded-2xl" />
           ))}
         </div>
       ) : (
-        <motion.div variants={list} initial="initial" animate="animate" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <motion.div variants={list} initial="initial" animate="animate" className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
           <KpiCard icon={Hourglass} tone="warn" label="Awaiting reimbursement" value={d.awaitingReimbursement} format={(n) => money(n)} sub="In approval, Finance or scheduled" onClick={() => navigate('/expenses')} />
           <KpiCard icon={Wallet} tone="ok" label="Reimbursed this year" value={d.reimbursedYtd} format={(n) => money(n)} sub="Paid to your account" onClick={() => navigate('/expenses?status=PAID')} />
           <KpiCard icon={Plane} tone="info" label="Active trips" value={openTrips} sub={`${d?.travel?.PENDING ?? 0} awaiting approval`} onClick={() => navigate('/travel')} />
@@ -79,7 +79,7 @@ export function DashboardPage() {
       )}
 
       <div className="mt-6 grid gap-6 xl:grid-cols-[1.6fr_1fr]">
-        <div className="space-y-6">
+        <div className="min-w-0 space-y-6">
           <section className="card p-5 md:p-6">
             <div className="mb-4 flex items-end justify-between">
               <div>
@@ -93,7 +93,7 @@ export function DashboardPage() {
 
           {d?.approvals?.items?.length > 0 && (
             <section className="card overflow-hidden">
-              <div className="flex items-center justify-between border-b border-line px-5 py-4">
+              <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-b border-line px-5 py-4">
                 <h2 className="text-[15px] font-semibold">Waiting for your approval</h2>
                 <Link to="/approvals" className="inline-flex items-center gap-1 text-[12.5px] font-medium text-brand hover:underline">
                   Open inbox <ArrowRight className="h-3.5 w-3.5" />
@@ -122,7 +122,7 @@ export function DashboardPage() {
           )}
         </div>
 
-        <div className="space-y-6">
+        <div className="min-w-0 space-y-6">
           <section className="card p-5">
             <h2 className="mb-3 text-[15px] font-semibold">Needs your attention</h2>
             {isLoading ? (

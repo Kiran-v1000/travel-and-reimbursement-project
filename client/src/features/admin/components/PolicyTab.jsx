@@ -42,7 +42,7 @@ export function PolicyTab() {
   return (
     <div className="space-y-6">
       <section className="card p-5">
-        <div className="mb-4 flex items-center justify-between">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
           <div><h2 className="text-[14.5px] font-semibold">Travel & claim policy</h2><p className="text-[12.5px] text-muted">These limits drive the live policy checks employees see.</p></div>
           <button type="button" className="btn-primary" onClick={() => save.mutate()} disabled={save.isPending}>{save.isPending ? <Spinner /> : <Save className="h-4 w-4" />} Save policy</button>
         </div>
@@ -58,8 +58,8 @@ export function PolicyTab() {
           <Field label="After a return, resubmission…">
             <select className="input" value={s.resubmitRule} onChange={(e) => setS({ ...s, resubmitRule: e.target.value })}><option value="RESTART">Restarts the full route</option><option value="RETURNING_LEVEL">Resumes at the level that returned it</option></select>
           </Field>
-          <label className="flex items-center gap-2 self-end pb-2.5 text-[13px]"><input type="checkbox" className="h-4 w-4 accent-[rgb(var(--brand))]" checked={!!s.escalationEnabled} onChange={(e) => setS({ ...s, escalationEnabled: e.target.checked })} /> Escalate overdue approvals</label>
-          <label className="flex items-center gap-2 self-end pb-2.5 text-[13px]"><input type="checkbox" className="h-4 w-4 accent-[rgb(var(--brand))]" checked={s.emailNotifications !== false} onChange={(e) => setS({ ...s, emailNotifications: e.target.checked })} /> Email notifications</label>
+          <label className="flex items-center gap-2 self-end pb-2.5 text-[13px]"><input type="checkbox" className="h-4 w-4 shrink-0 accent-[rgb(var(--brand))]" checked={!!s.escalationEnabled} onChange={(e) => setS({ ...s, escalationEnabled: e.target.checked })} /> Escalate overdue approvals</label>
+          <label className="flex items-center gap-2 self-end pb-2.5 text-[13px]"><input type="checkbox" className="h-4 w-4 shrink-0 accent-[rgb(var(--brand))]" checked={s.emailNotifications !== false} onChange={(e) => setS({ ...s, emailNotifications: e.target.checked })} /> Email notifications</label>
         </div>
         <div className="mt-5 grid gap-4 border-t border-line pt-5 sm:grid-cols-2">
           <Field label="Bank ledger (accounting export)" hint="Payments are credited to this ledger"><input className="input" maxLength={120} value={s.accountingBankLedger ?? ''} onChange={(e) => setS({ ...s, accountingBankLedger: e.target.value })} /></Field>
@@ -68,7 +68,7 @@ export function PolicyTab() {
       </section>
 
       <section className="card overflow-hidden">
-        <div className="flex items-center justify-between border-b border-line px-5 py-4">
+        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-b border-line px-5 py-4">
           <h2 className="text-[14.5px] font-semibold">Expense categories</h2>
           <button type="button" className="btn-secondary" onClick={() => setCat({ code: '', name: '', icon: 'receipt', perItemLimit: '', receiptThreshold: 500, glAccount: '', active: true })}><Plus className="h-4 w-4" /> Add category</button>
         </div>
@@ -101,7 +101,7 @@ export function PolicyTab() {
             <Field label="Receipt required above" hint="0 = always"><input type="number" className="input num" value={cat.receiptThreshold} onChange={(e) => setCat({ ...cat, receiptThreshold: e.target.value })} /></Field>
             <Field label="Accounting ledger" hint="GL account in Tally / your books" className="sm:col-span-2"><input className="input" maxLength={120} placeholder="e.g. Travel - Airfare" value={cat.glAccount} onChange={(e) => setCat({ ...cat, glAccount: e.target.value })} /></Field>
             <Field label="Icon"><select className="input" value={cat.icon} onChange={(e) => setCat({ ...cat, icon: e.target.value })}>{['plane', 'train', 'bed', 'utensils', 'car', 'stamp', 'wine', 'wifi', 'receipt'].map((i) => <option key={i}>{i}</option>)}</select></Field>
-            <label className="flex items-center gap-2 self-end pb-2.5 text-[13px]"><input type="checkbox" className="h-4 w-4 accent-[rgb(var(--brand))]" checked={cat.active} onChange={(e) => setCat({ ...cat, active: e.target.checked })} /> Active</label>
+            <label className="flex items-center gap-2 self-end pb-2.5 text-[13px]"><input type="checkbox" className="h-4 w-4 shrink-0 accent-[rgb(var(--brand))]" checked={cat.active} onChange={(e) => setCat({ ...cat, active: e.target.checked })} /> Active</label>
           </div>
         )}
       </Modal>

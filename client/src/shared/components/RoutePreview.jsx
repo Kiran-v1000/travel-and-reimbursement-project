@@ -8,7 +8,7 @@ export function RoutePreview({ route }) {
   if (!route) return null;
   return (
     <div>
-      <div className="mb-2.5 flex items-center justify-between">
+      <div className="mb-2.5 flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
         <span className="kicker">Approval route</span>
         <span className="truncate pl-2 text-[11.5px] text-muted">{route.rule?.name}</span>
       </div>

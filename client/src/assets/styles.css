@@ -133,3 +133,36 @@
     scroll-behavior: auto !important;
   }
 }
+
+/* Touch screens (phones, tablets): comfortable 44 px tap targets (Apple HIG, WCAG 2.5.5) and
+   16 px form text, so iOS Safari does not zoom the page when a field is focused. Devices with a
+   mouse keep the compact sizes. Placed after the utilities so per-element sizes cannot undo it. */
+@media (pointer: coarse) {
+  .btn-primary,
+  .btn-secondary,
+  .btn-ghost,
+  .btn-danger,
+  .btn-success {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  .input {
+    min-height: 44px;
+  }
+  input:not([type='checkbox']):not([type='radio']):not([type='range']),
+  select.input,
+  textarea.input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
+  [role='tab'] {
+    min-height: 40px;
+  }
+  input[type='checkbox'],
+  input[type='radio'] {
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+  }
+}

@@ -99,7 +99,7 @@ export function PeopleTab() {
           <Field label="Cost center"><select className="input" value={form.costCenterId} onChange={set('costCenterId')}><option value="">—</option>{ref?.costCenters?.map((c) => <option key={c.id} value={c.id}>{c.code} · {c.name}</option>)}</select></Field>
           <Field label="Reports to" hint="Drives the approval hierarchy"><UserPicker value={form.managerId || null} excludeId={edit?.id} onChange={(id) => setForm((f) => ({ ...f, managerId: id ?? '' }))} placeholder="No manager - search to assign" ariaLabel="Reports to" /></Field>
           <Field label={edit === 'new' ? 'Initial password' : 'Reset password'} hint="At least 8 characters; leave blank to keep"><input className="input" type="password" autoComplete="new-password" value={form.password} onChange={set('password')} /></Field>
-          <label className="flex items-center gap-2 text-[13px] sm:col-span-2"><input type="checkbox" className="h-4 w-4 accent-[rgb(var(--brand))]" checked={form.active} onChange={set('active')} /> Active (inactive approvers are routed to the fallback approver)</label>
+          <label className="flex items-center gap-2 text-[13px] sm:col-span-2"><input type="checkbox" className="h-4 w-4 shrink-0 accent-[rgb(var(--brand))]" checked={form.active} onChange={set('active')} /> Active (inactive approvers are routed to the fallback approver)</label>
         </div>
       </Modal>
     </section>

@@ -63,16 +63,16 @@ export function ExpenseListPage() {
       />
 
       <div className="card overflow-hidden">
-        <div className="flex flex-col gap-3 border-b border-line p-4 lg:flex-row lg:items-center">
+        <div className="flex flex-col gap-3 border-b border-line p-4 2xl:flex-row 2xl:items-center">
           <Tabs
             id="exp-tabs"
             tabs={TABS.map((t) => ({ ...t, count: t.value ? t.value.split(',').reduce((a, s) => a + (counts[s] ?? 0), 0) : undefined }))}
             value={status}
             onChange={(v) => set('status', v)}
           />
-          <div className="flex flex-1 items-center gap-2 lg:justify-end">
+          <div className="flex flex-1 flex-wrap items-center gap-2 sm:justify-between 2xl:justify-end">
             {canTeam && <Tabs id="exp-scope" tabs={[{ value: 'mine', label: 'Mine' }, { value: 'all', label: user.role === 'MANAGER' ? 'My team' : 'Everyone' }]} value={scope} onChange={(v) => set('scope', v === 'mine' ? '' : v)} />}
-            <div className="relative w-full lg:w-64">
+            <div className="relative w-full sm:w-64">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
               <input className="input h-9 pl-9" placeholder="Search code, title, person…" value={search} onChange={(e) => setSearch(e.target.value)} aria-label="Search expense reports" />
             </div>
@@ -92,8 +92,8 @@ export function ExpenseListPage() {
           <motion.ul variants={list} initial="initial" animate="animate" className={isFetching ? 'opacity-70 transition-opacity' : 'transition-opacity'}>
             {data.items.map((r) => (
               <motion.li key={r.id} variants={item}>
-                <button type="button" onClick={() => navigate(`/expenses/${r.id}`)} className="table-row group grid w-full grid-cols-1 gap-2 border-b border-line/60 px-5 py-3.5 text-left last:border-0 md:grid-cols-[1.7fr_1fr_0.9fr_0.6fr_1.1fr_24px] md:items-center md:gap-4">
-                  <div className="flex min-w-0 items-center gap-3">
+                <button type="button" onClick={() => navigate(`/expenses/${r.id}`)} className="table-row group grid w-full grid-cols-[minmax(0,1fr)_auto] gap-x-3 gap-y-1.5 border-b border-line/60 px-5 py-3.5 text-left last:border-0 md:grid-cols-[1.7fr_1fr_0.9fr_0.6fr_1.1fr_24px] md:items-center md:gap-4">
+                  <div className="col-start-1 row-start-1 flex min-w-0 items-center gap-3 md:col-start-auto md:row-start-auto">
                     {scope === 'mine' ? (
                       <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-brand-soft to-surface ring-1 ring-line">
                         <Receipt className="h-[18px] w-[18px] text-brand" />
@@ -114,13 +114,13 @@ export function ExpenseListPage() {
                       </p>
                     </div>
                   </div>
-                  <div className="text-[12.5px]">
+                  <div className="col-start-1 row-start-2 pl-[52px] text-[12.5px] md:col-start-auto md:row-start-auto md:pl-0">
                     <p>{r._count.lines} expense{r._count.lines === 1 ? '' : 's'}</p>
                     <p className="text-[11.5px] text-muted">{r.submittedAt ? `Submitted ${shortDate(r.submittedAt)}` : `Updated ${shortDate(r.updatedAt)}`}</p>
                   </div>
-                  <p className="num text-[14px] font-semibold md:text-right">{money(r.totalBase)}</p>
-                  <div>{r.policyFlags?.length ? <FlagCount flags={r.policyFlags} /> : <span className="text-[12px] text-muted">Clean</span>}</div>
-                  <div className="min-w-0">
+                  <p className="num text-[14px] font-semibold col-start-2 row-start-1 self-center text-right md:col-start-auto md:row-start-auto">{money(r.totalBase)}</p>
+                  <div className={`col-start-1 row-start-3 pl-[52px] md:col-start-auto md:row-start-auto md:block md:pl-0 ${r.policyFlags?.length ? '' : 'hidden'}`}>{r.policyFlags?.length ? <FlagCount flags={r.policyFlags} /> : <span className="text-[12px] text-muted">Clean</span>}</div>
+                  <div className="col-start-2 row-start-2 flex min-w-0 flex-col items-end md:col-start-auto md:row-start-auto md:block">
                     <StatusChip status={r.status} size="sm" />
                     <p className="mt-1 flex items-center gap-1 truncate text-[11px] text-muted">
                       {r.steps?.[0] && <>With {r.steps[0].approver.name}</>}

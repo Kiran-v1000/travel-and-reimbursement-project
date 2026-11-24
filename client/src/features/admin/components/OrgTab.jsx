@@ -48,7 +48,7 @@ export function OrgTab() {
       <div className="grid gap-6 lg:grid-cols-2">
         {[['Departments', depts, 'dept'], ['Cost centers', ccs, 'cc']].map(([title, rows, kind]) => (
           <section key={kind} className="card overflow-hidden">
-            <div className="flex items-center justify-between border-b border-line px-5 py-4">
+            <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-b border-line px-5 py-4">
               <h2 className="text-[14.5px] font-semibold">{title}</h2>
               <button type="button" className="btn-secondary h-8" onClick={() => setEdit({ kind, code: '', name: '', headId: '' })}><Plus className="h-3.5 w-3.5" /> Add</button>
             </div>

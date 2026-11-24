@@ -30,7 +30,7 @@ function Panel({ title, action, children, className }) {
   return (
     // min-w-0: a grid item may shrink below its content, so wide tables scroll inside the card.
     <motion.section variants={item} className={clsx('card min-w-0 p-5', className)}>
-      <div className="mb-4 flex items-center justify-between">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
         <h2 className="text-[14.5px] font-semibold">{title}</h2>
         {action}
       </div>
@@ -68,9 +68,9 @@ export function ReportsPage() {
           </p>
         )}
         actions={
-          <div className="inline-flex rounded-xl bg-subtle p-1">
+          <div className="inline-flex max-w-full shrink-0 overflow-x-auto rounded-xl bg-subtle p-1" role="group" aria-label="Date range">
             {PRESETS.map((p) => (
-              <button key={p.value} type="button" onClick={() => setPreset(p.value)} className={clsx('h-8 rounded-lg px-3 text-[12.5px] font-medium transition-all', preset === p.value ? 'bg-surface text-ink shadow-card' : 'text-muted hover:text-ink')}>
+              <button key={p.value} type="button" aria-pressed={preset === p.value} onClick={() => setPreset(p.value)} className={clsx('h-8 shrink-0 whitespace-nowrap rounded-lg px-3 text-[12.5px] font-medium transition-all', preset === p.value ? 'bg-surface text-ink shadow-card' : 'text-muted hover:text-ink')}>
                 {p.label}
               </button>
             ))}
@@ -82,7 +82,7 @@ export function ReportsPage() {
         <div className="grid gap-4 md:grid-cols-3">{[...Array(6)].map((_, i) => <Skeleton key={i} className="h-40 rounded-2xl" />)}</div>
       ) : (
         <motion.div variants={list} initial="initial" animate="animate" className="space-y-6">
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+          <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-5">
             {[
               { label: 'Claimed spend', v: a.kpis.totalSpend, f: (n) => compact(n), icon: IndianRupee },
               { label: 'Trip estimates', v: a.kpis.travelEstimate, f: (n) => compact(n), icon: Plane, sub: `${a.kpis.trips} trips` },
@@ -116,7 +116,7 @@ export function ReportsPage() {
               </div>
             </Panel>
             <Panel title="By category" action={<button type="button" className="btn-ghost h-8 text-[12px]" onClick={() => exp('categories')}><Download className="h-3.5 w-3.5" /> CSV</button>}>
-              <div className="flex items-center gap-4">
+              <div className="flex flex-col items-center gap-4 sm:flex-row xl:flex-col 2xl:flex-row">
                 {/* Decorative: the legend next to it lists every category with its amount. */}
                 <div className="h-[200px] w-[200px] shrink-0" aria-hidden="true">
                   <ResponsiveContainer>
@@ -128,11 +128,11 @@ export function ReportsPage() {
                     </PieChart>
                   </ResponsiveContainer>
                 </div>
-                <ul className="min-w-0 flex-1 space-y-1.5">
+                <ul className="w-full min-w-0 flex-1 space-y-1.5">
                   {a.byCategory.slice(0, 7).map((c, i) => (
-                    <li key={c.label} className="flex items-center gap-2 text-[12.5px]">
-                      <span className="h-2.5 w-2.5 shrink-0 rounded-sm" style={{ background: COLORS[i % COLORS.length] }} />
-                      <span className="flex-1 truncate">{c.label}</span>
+                    <li key={c.label} className="flex items-start gap-2 text-[12.5px] leading-snug">
+                      <span className="mt-1 h-2.5 w-2.5 shrink-0 rounded-sm" style={{ background: COLORS[i % COLORS.length] }} />
+                      <span className="min-w-0 flex-1 break-words">{c.label}</span>
                       <span className="num font-medium">{compact(c.total)}</span>
                     </li>
                   ))}

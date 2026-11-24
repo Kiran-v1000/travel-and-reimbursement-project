@@ -62,16 +62,16 @@ export function TravelListPage() {
       />
 
       <div className="card overflow-hidden">
-        <div className="flex flex-col gap-3 border-b border-line p-4 lg:flex-row lg:items-center">
+        <div className="flex flex-col gap-3 border-b border-line p-4 2xl:flex-row 2xl:items-center">
           <Tabs
             id="travel-tabs"
             tabs={TABS.map((t) => ({ ...t, count: t.value ? t.value.split(',').reduce((a, s) => a + (counts[s] ?? 0), 0) : undefined }))}
             value={status}
             onChange={(v) => set('status', v)}
           />
-          <div className="flex flex-1 items-center gap-2 lg:justify-end">
+          <div className="flex flex-1 flex-wrap items-center gap-2 sm:justify-between 2xl:justify-end">
             {canTeam && <Tabs id="travel-scope" tabs={[{ value: 'mine', label: 'Mine' }, { value: 'all', label: user.role === 'MANAGER' ? 'My team' : 'Everyone' }]} value={scope} onChange={(v) => set('scope', v === 'mine' ? '' : v)} />}
-            <div className="relative w-full lg:w-64">
+            <div className="relative w-full sm:w-64">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
               <input className="input h-9 pl-9" placeholder="Search code, title, city…" value={search} onChange={(e) => setSearch(e.target.value)} aria-label="Search travel requests" />
             </div>
@@ -101,8 +101,8 @@ export function TravelListPage() {
               <AnimatePresence initial={false}>
                 {data.items.map((t) => (
                   <motion.li key={t.id} variants={item} layout exit="exit">
-                    <button type="button" onClick={() => navigate(`/travel/${t.id}`)} className="table-row group grid w-full grid-cols-1 gap-2 border-b border-line/60 px-5 py-3.5 text-left last:border-0 md:grid-cols-[1.6fr_1.1fr_0.9fr_0.8fr_1fr_24px] md:items-center md:gap-4">
-                      <div className="flex min-w-0 items-center gap-3">
+                    <button type="button" onClick={() => navigate(`/travel/${t.id}`)} className="table-row group grid w-full grid-cols-[minmax(0,1fr)_auto] gap-x-3 gap-y-1.5 border-b border-line/60 px-5 py-3.5 text-left last:border-0 md:grid-cols-[1.6fr_1.1fr_0.9fr_0.8fr_1fr_24px] md:items-center md:gap-4">
+                      <div className="col-start-1 row-start-1 flex min-w-0 items-center gap-3 md:col-start-auto md:row-start-auto">
                         <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-brand-soft to-surface ring-1 ring-line">
                           {t.travelType === 'INTERNATIONAL' ? <Globe2 className="h-[18px] w-[18px] text-brand" /> : <Plane className="h-[18px] w-[18px] text-brand" />}
                         </span>
@@ -113,7 +113,7 @@ export function TravelListPage() {
                           </p>
                         </div>
                       </div>
-                      <div className="text-[12.5px]">
+                      <div className="col-start-1 row-start-2 pl-[52px] text-[12.5px] md:col-start-auto md:row-start-auto md:pl-0">
                         <p>
                           {date(t.startDate, { day: 'numeric', month: 'short' })} – {date(t.endDate)}
                         </p>
@@ -126,9 +126,9 @@ export function TravelListPage() {
                           )}
                         </p>
                       </div>
-                      <p className="num text-[13.5px] font-semibold md:text-right">{money(t.estTotalBase)}</p>
-                      <div>{t.policyFlags?.length ? <FlagCount flags={t.policyFlags} /> : <span className="text-[12px] text-muted">In policy</span>}</div>
-                      <div className="min-w-0">
+                      <p className="num text-[13.5px] font-semibold col-start-2 row-start-1 self-center text-right md:col-start-auto md:row-start-auto">{money(t.estTotalBase)}</p>
+                      <div className={`col-start-1 row-start-3 pl-[52px] md:col-start-auto md:row-start-auto md:block md:pl-0 ${t.policyFlags?.length ? '' : 'hidden'}`}>{t.policyFlags?.length ? <FlagCount flags={t.policyFlags} /> : <span className="text-[12px] text-muted">In policy</span>}</div>
+                      <div className="col-start-2 row-start-2 flex min-w-0 flex-col items-end md:col-start-auto md:row-start-auto md:block">
                         <StatusChip status={t.status} size="sm" />
                         {t.steps?.[0] && <p className="mt-1 truncate text-[11px] text-muted">With {t.steps[0].approver.name}</p>}
                       </div>

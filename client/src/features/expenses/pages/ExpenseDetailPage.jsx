@@ -73,7 +73,7 @@ export function ExpenseDetailPage() {
       <div className="mb-5 flex items-center gap-2 text-[12.5px] text-muted">
         <button type="button" onClick={() => navigate(-1)} className="btn-ghost h-8 px-2"><ArrowLeft className="h-4 w-4" /> Back</button>
         <span>/</span>
-        <Link to="/expenses" className="hover:text-ink">Expenses</Link>
+        <Link to="/expenses" className="inline-flex min-h-6 items-center hover:text-ink">Expenses</Link>
         <span>/</span>
         <span className="font-mono text-ink">{r.code}</span>
       </div>
@@ -124,7 +124,7 @@ export function ExpenseDetailPage() {
       <div className="grid gap-6 xl:grid-cols-[1.55fr_1fr]">
         <div className="min-w-0 space-y-6">
           <section className="card overflow-hidden">
-            <div className="flex items-center justify-between border-b border-line px-5 py-4">
+            <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-b border-line px-5 py-4">
               <div>
                 <h2 className="text-[15px] font-semibold">Expenses</h2>
                 <p className="text-[12.5px] text-muted">{r.lines.length} item{r.lines.length === 1 ? '' : 's'} · {r.purpose}</p>
@@ -229,7 +229,7 @@ export function ExpenseDetailPage() {
         <div className="min-w-0 space-y-6 xl:sticky xl:top-24 xl:self-start">
           {editable && (
             <section className="card p-5">
-              <div className="mb-3 flex items-center justify-between">
+              <div className="mb-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
                 <h2 className="text-[15px] font-semibold">Ready to submit?</h2>
                 {checking && <Spinner className="h-3.5 w-3.5 text-muted" />}
               </div>

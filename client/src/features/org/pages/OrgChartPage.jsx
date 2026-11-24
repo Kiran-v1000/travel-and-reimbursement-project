@@ -71,7 +71,7 @@ function FocusCard({ data }) {
             {p.department && <span className="inline-flex items-center gap-1"><Building2 className="h-3.5 w-3.5" />{p.department.name}</span>}
             {p.location && <span className="inline-flex items-center gap-1"><MapPin className="h-3.5 w-3.5" />{p.location}</span>}
             <span className="inline-flex items-center gap-1 font-mono"><UserRound className="h-3.5 w-3.5" />{p.employeeId}</span>
-            <a href={`mailto:${p.email}`} className="inline-flex items-center gap-1 text-brand hover:underline"><Mail className="h-3.5 w-3.5" />{p.email}</a>
+            <a href={`mailto:${p.email}`} className="inline-flex min-h-6 items-center gap-1 text-brand hover:underline"><Mail className="h-3.5 w-3.5" />{p.email}</a>
           </div>
         </div>
       </div>

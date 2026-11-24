@@ -133,14 +133,14 @@ export function ImportPeopleDialog({ open, onClose }) {
 
   return (
     <Modal open={open} onClose={applying ? () => {} : onClose} size="xl" title="Import people from CSV" description="Load or update employees, reporting lines, departments and cost centers from your HR system." footer={footer}>
-      <ol className="mb-5 flex items-center gap-2 text-[12px]">
+      <ol className="mb-5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[12px]">
         {['Choose file', 'Check', 'Import'].map((label, i) => (
-          <li key={label} className="flex items-center gap-2">
+          <li key={label} className="flex items-center gap-2" aria-current={step === i + 1 ? 'step' : undefined}>
             <span className={clsx('num flex h-6 w-6 items-center justify-center rounded-full text-[11px] font-bold', step > i + 1 ? 'bg-ok text-white dark:text-slate-950' : step === i + 1 ? 'bg-brand text-white dark:text-slate-950' : 'bg-subtle text-muted')}>
               {step > i + 1 ? '✓' : i + 1}
             </span>
             <span className={step === i + 1 ? 'font-medium' : 'text-muted'}>{label}</span>
-            {i < 2 && <span className="mx-1 h-px w-8 bg-line" />}
+            {i < 2 && <span className="mx-1 h-px w-4 bg-line sm:w-8" aria-hidden />}
           </li>
         ))}
       </ol>
@@ -228,7 +228,7 @@ export function ImportPeopleDialog({ open, onClose }) {
             )}
             {hasErrors && (
               <div className="overflow-hidden rounded-2xl border border-line">
-                <div className="flex items-center justify-between border-b border-line bg-subtle/60 px-4 py-2">
+                <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-b border-line bg-subtle/60 px-4 py-2">
                   <p className="text-[12.5px] font-semibold">Problems to fix</p>
                   <button type="button" className="inline-flex items-center gap-1 text-[12px] font-medium text-brand hover:underline" onClick={() => {
                     const url = URL.createObjectURL(new Blob([errorsCsv(check.errors)], { type: 'text/csv' }));

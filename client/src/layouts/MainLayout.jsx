@@ -85,7 +85,7 @@ function NewMenu() {
       </button>
       <AnimatePresence>
         {open && (
-          <motion.div {...pop} className="absolute right-0 z-40 mt-2 w-64 origin-top-right rounded-2xl border border-line bg-surface p-1.5 shadow-lift">
+          <motion.div {...pop} className="fixed inset-x-3 top-[4.25rem] z-40 origin-top rounded-2xl border border-line bg-surface p-1.5 shadow-lift sm:absolute sm:inset-x-auto sm:right-0 sm:top-auto sm:mt-2 sm:w-64 sm:origin-top-right">
             {[
               { to: '/travel/new', icon: Plane, title: 'Travel request', body: 'Plan a trip and get it approved' },
               { to: '/expenses/new', icon: Receipt, title: 'Expense report', body: 'Claim money you spent' },
@@ -129,7 +129,7 @@ function UserMenu() {
       </button>
       <AnimatePresence>
         {open && (
-          <motion.div {...pop} className="absolute right-0 z-40 mt-2 w-64 origin-top-right rounded-2xl border border-line bg-surface p-1.5 shadow-lift">
+          <motion.div {...pop} className="fixed right-3 top-[4.25rem] z-40 w-64 max-w-[calc(100vw-24px)] origin-top-right rounded-2xl border border-line bg-surface p-1.5 shadow-lift sm:absolute sm:right-0 sm:top-auto sm:mt-2">
             <div className="px-3 py-2.5">
               <p className="text-[13px] font-semibold">{user?.name}</p>
               <p className="truncate text-[12px] text-muted">{user?.email}</p>

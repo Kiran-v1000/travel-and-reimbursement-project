@@ -58,7 +58,7 @@ export function NotificationBell() {
       </button>
       <AnimatePresence>
         {open && (
-          <motion.div {...pop} className="absolute right-0 z-40 mt-2 w-[min(380px,calc(100vw-24px))] origin-top-right overflow-hidden rounded-2xl border border-line bg-surface shadow-lift">
+          <motion.div {...pop} className="fixed inset-x-3 top-[4.25rem] z-40 origin-top overflow-hidden rounded-2xl border border-line bg-surface shadow-lift sm:absolute sm:inset-x-auto sm:right-0 sm:top-auto sm:mt-2 sm:w-[380px] sm:origin-top-right">
             <div className="flex items-center justify-between border-b border-line px-4 py-3">
               <p className="text-[14px] font-semibold">Notifications</p>
               {unread > 0 && (

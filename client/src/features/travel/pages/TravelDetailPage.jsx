@@ -62,7 +62,7 @@ export function TravelDetailPage() {
           <ArrowLeft className="h-4 w-4" /> Back
         </button>
         <span>/</span>
-        <Link to="/travel" className="hover:text-ink">Travel</Link>
+        <Link to="/travel" className="inline-flex min-h-6 items-center hover:text-ink">Travel</Link>
         <span>/</span>
         <span className="font-mono text-ink">{t.code}</span>
       </div>

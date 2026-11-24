@@ -71,7 +71,7 @@ function RuleEditor({ open, onClose, rule }) {
             <input type="checkbox" className="mt-0.5 h-4 w-4 accent-[rgb(var(--brand))]" checked={r.onPolicyException} onChange={set('onPolicyException')} />
             <span><span className="flex items-center gap-1 font-medium"><ShieldAlert className="h-3.5 w-3.5 text-warn" /> Only for policy exceptions</span><span className="text-[12px] text-muted">Adds scrutiny when a request is outside policy.</span></span>
           </label>
-          <label className="flex items-center gap-2 text-[13px]"><input type="checkbox" className="h-4 w-4 accent-[rgb(var(--brand))]" checked={r.active} onChange={set('active')} /> Active</label>
+          <label className="flex items-center gap-2 text-[13px]"><input type="checkbox" className="h-4 w-4 shrink-0 accent-[rgb(var(--brand))]" checked={r.active} onChange={set('active')} /> Active</label>
         </div>
 
         <div>
@@ -123,7 +123,7 @@ function Simulator() {
         <input type="number" className="input num" value={s.amount} onChange={(e) => setS({ ...s, amount: e.target.value })} aria-label="Amount in INR" />
       </div>
       <div className="mt-3 flex flex-wrap items-center gap-4">
-        <label className="flex items-center gap-2 text-[12.5px]"><input type="checkbox" className="h-4 w-4 accent-[rgb(var(--brand))]" checked={s.hasException} onChange={(e) => setS({ ...s, hasException: e.target.checked })} /> Outside policy</label>
+        <label className="flex items-center gap-2 text-[12.5px]"><input type="checkbox" className="h-4 w-4 shrink-0 accent-[rgb(var(--brand))]" checked={s.hasException} onChange={(e) => setS({ ...s, hasException: e.target.checked })} /> Outside policy</label>
         <button type="button" className="btn-primary ml-auto" disabled={!s.userId || sim.isPending} onClick={() => sim.mutate()}>{sim.isPending && <Spinner />} Run test</button>
       </div>
       <AnimatePresence>{sim.data && <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className="mt-4 rounded-2xl bg-subtle/60 p-4"><RoutePreview route={sim.data} /></motion.div>}</AnimatePresence>
@@ -143,7 +143,7 @@ export function RulesTab() {
     <div className="space-y-6">
       <Simulator />
       <section className="card overflow-hidden">
-        <div className="flex items-center justify-between border-b border-line px-5 py-4">
+        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-b border-line px-5 py-4">
           <div><h2 className="text-[14.5px] font-semibold">Routing rules</h2><p className="text-[12.5px] text-muted">Change routing by amount, organisation or trip type without code changes. Every edit creates a new version.</p></div>
           <button type="button" className="btn-primary" onClick={() => setEdit({ open: true, rule: null })}><Plus className="h-4 w-4" /> New rule</button>
         </div>

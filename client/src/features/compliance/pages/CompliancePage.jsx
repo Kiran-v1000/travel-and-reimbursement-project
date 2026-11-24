@@ -73,7 +73,7 @@ export function CompliancePage() {
           { icon: HardDrive, tone: 'text-info bg-info/10', label: 'Receipts to delete', value: r ? fmt(r.expenses.files + r.trips.files) : '—', sub: r ? bytes(r.expenses.bytes + r.trips.bytes || 1) : '' },
           { icon: ShieldAlert, tone: 'text-bad bg-bad/10', label: 'Protected by holds', value: r ? fmt(held) : '—', sub: 'Past retention, kept for a hold' },
         ].map((k) => (
-          <motion.div key={k.label} variants={item} className="card flex items-center gap-4 p-5">
+          <motion.div key={k.label} variants={item} className="card flex min-w-0 items-center gap-3 p-4 sm:gap-4 sm:p-5">
             <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl ${k.tone}`}><k.icon className="h-5 w-5" /></span>
             <div className="min-w-0">
               <p className="text-[12.5px] text-muted">{k.label}</p>
@@ -100,7 +100,7 @@ export function CompliancePage() {
           </div>
           {r && (
             <label className={`flex items-center gap-3 border-b border-line px-5 py-3 text-[13px] ${isAdmin ? '' : 'opacity-70'}`}>
-              <input type="checkbox" className="h-4 w-4 accent-[rgb(var(--brand))]" checked={r.autoPurge} disabled={!isAdmin || toggleAuto.isPending} onChange={(e) => toggleAuto.mutate(e.target.checked)} />
+              <input type="checkbox" className="h-4 w-4 shrink-0 accent-[rgb(var(--brand))]" checked={r.autoPurge} disabled={!isAdmin || toggleAuto.isPending} onChange={(e) => toggleAuto.mutate(e.target.checked)} />
               <span><span className="font-medium">Purge automatically every night</span> <span className="text-muted">(02:43). {r.autoPurge ? 'On.' : 'Off — nothing is removed until an administrator runs it.'}</span></span>
             </label>
           )}

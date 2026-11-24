@@ -76,7 +76,7 @@ export function ProfilePage() {
       </Modal>
 
       <section className="card overflow-hidden">
-        <div className="flex items-center justify-between border-b border-line px-5 py-4">
+        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-b border-line px-5 py-4">
           <div>
             <h2 className="text-[15px] font-semibold">Approval delegation</h2>
             <p className="text-[12.5px] text-muted">Going on leave? Let someone approve on your behalf for a set period. Every decision records both names.</p>
