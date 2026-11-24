@@ -32,10 +32,16 @@ export function testDatabaseUrl() {
   return { url: url.toString(), name: finalName };
 }
 
-/** Environment for anything that should touch only the test database and test uploads. */
+/**
+ * Environment for anything that should touch only the test database and test uploads.
+ * Uploads: TEST_UPLOAD_DIR if set; in CI (CI=true, a disposable machine) the job's own UPLOAD_DIR,
+ * so the separate "seed" step and the tests use the same folder; on a developer machine
+ * uploads-test/, so test receipts never mix with your working ones.
+ */
 export function testEnv() {
   const { url } = testDatabaseUrl();
-  return { ...process.env, DATABASE_URL: url, UPLOAD_DIR: process.env.TEST_UPLOAD_DIR || 'uploads-test', NODE_ENV: 'test' };
+  const uploads = process.env.TEST_UPLOAD_DIR || (process.env.CI && process.env.UPLOAD_DIR) || 'uploads-test';
+  return { ...process.env, DATABASE_URL: url, UPLOAD_DIR: uploads, NODE_ENV: 'test' };
 }
 
 function run(cmd, args, env) {
