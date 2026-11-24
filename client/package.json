@@ -26,7 +26,7 @@
   "devDependencies": {
     "@vitejs/plugin-react": "^4.7.0",
     "autoprefixer": "^10.4.20",
-    "axe-core": "^4.10.2",
+    "axe-core": "^4.14.1",
     "eslint": "^9.15.0",
     "eslint-plugin-jsx-a11y": "^6.10.2",
     "eslint-plugin-react-hooks": "^5.0.0",
